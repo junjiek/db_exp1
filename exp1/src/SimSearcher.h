@@ -18,6 +18,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <cmath>
 using namespace std;
 
 typedef double ft;

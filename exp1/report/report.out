@@ -1,0 +1,13 @@
+\BOOKMARK [1][-]{section.1}{任务}{}% 1
+\BOOKMARK [1][-]{section.2}{BruteForce}{}% 2
+\BOOKMARK [1][-]{section.3}{Tournament\040sort}{}% 3
+\BOOKMARK [2][-]{subsection.3.1}{索引}{section.3}% 4
+\BOOKMARK [2][-]{subsection.3.2}{Filter}{section.3}% 5
+\BOOKMARK [3][-]{subsubsection.3.2.1}{建立binary heap}{subsection.3.2}% 6
+\BOOKMARK [3][-]{subsubsection.3.2.2}{Tournament sort进行N-way merge}{subsection.3.2}% 7
+\BOOKMARK [2][-]{subsection.3.3}{Verification}{section.3}% 8
+\BOOKMARK [3][-]{subsubsection.3.3.1}{Levenshtein\040edit\040distance}{subsection.3.3}% 9
+\BOOKMARK [3][-]{subsubsection.3.3.2}{Jaccard\040index}{subsection.3.3}% 10
+\BOOKMARK [1][-]{section.4}{MergeSkip}{}% 11
+\BOOKMARK [1][-]{section.5}{DivideSkip}{}% 12
+\BOOKMARK [1][-]{section.6}{其他}{}% 13
