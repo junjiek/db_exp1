@@ -56,21 +56,14 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     return (_map.empty()) ? FAILURE : SUCCESS;
 }
 
-template <typename TP>
-int SimSearcher::calcT(string &query, int kind, TP threshold) {
-    int T = 0;
-    switch(kind) {
-        case ED:
-            T = max(T, (int)query.length() - (int)_q + 1 - (int)(threshold * _q));
-            break;
-        case JAC:
-            T = max((double)threshold * ((double)query.length() - _q + 1),
-                    (((double)query.length() - _q + 1) + _minSize) / (1 + 1.0 / threshold));
-            break;
-        default:
-            break;
-    }
-    return T;
+int SimSearcher::calcTJAC(string &query, double threshold) {
+    return max((double)threshold * ((double)query.length() - _q + 1),
+              (((double)query.length() - _q + 1) + _minSize) / (1 + 1.0 / threshold));
+
+}
+
+int SimSearcher::calcTED(string &query, unsigned threshold) {
+    return max(0, (int)query.length() - (int)_q + 1 - (int)(threshold * _q));
 }
 
 //get the lists of grams
@@ -215,90 +208,79 @@ void SimSearcher::getRawResult(string &query, map<int, int> &rawResult,
     divideSkip(query, list, rawResult, T);
 }
 
-//calculate the distance
-template <typename TP>
-TP SimSearcher::getDistance(string &a, string &b, int T, int kind, TP threshold,
-                            vector<int> &d0, vector<int> &d1) {
+double SimSearcher::jaccardDist(string &a, string &b, int T, double threshold,
+                                vector<int> &d0, vector<int> &d1) {
     double dis = 0;
     int len_a = a.length(), len_b = b.length();
-    switch(kind) {
-        case ED: {
-            //cout << "a = " << a << endl;
-            dis = threshold + 1;
-            if (abs(len_a - len_b) > threshold)
-                return dis;
-            for (int i = 0; i <= len_a; ++ i) {
-                int l = max(0, i - (int)threshold),
-                            r = min(len_b, i + (int)threshold);
-                int minDis = threshold + 1;
-                for (int j = l; j <= r; ++ j) {
-                    if (i == 0)
-                        d1[j] = j;
-                    else if (j == 0)
-                        d1[j] = i;
-                    else {
-                        if (a[i - 1] == b[j - 1])
-                            d1[j] = d0[j - 1];
-                        else
-                            d1[j] = d0[j - 1] + 1;
-                        if (j > l) d1[j] = min(d1[j], d1[j - 1] + 1);
-                        if (j < i + threshold) d1[j] = min(d1[j], d0[j] + 1);
-                    }
-                    minDis = min(minDis, d1[j]);    
-                }
-                if (minDis > threshold)
-                    return dis;
-                swap(d0, d1);
-            }
-            dis = d0[len_b];
-            //cout << "a = " << a << " dis = " << dis << endl;
-            break;
-        }
-        case JAC:
-            dis = 0;
-            if (len_a < _q)
-                return dis;
-            dis = (double)T / (len_a + len_b - 2 * (_q - 1) - T);
-            break;
-        default:
-            break;
-    };
+
+    dis = 0;
+    if (len_a < _q)
+        return dis;
+    dis = (double)T / (len_a + len_b - 2 * (_q - 1) - T);
+
     return dis;
 }
 
-//search the similar string
-template <typename TP>
-int SimSearcher::searchSimilarStr(const char *query, int kind, TP threshold,
-                                  vector<pair<unsigned, TP> > &result) {
+unsigned SimSearcher::edDist(string &a, string &b, int T, unsigned threshold,
+                             vector<int> &d0, vector<int> &d1) {
+    double dis = 0;
+    int len_a = a.length(), len_b = b.length();
+    //cout << "a = " << a << endl;
+    dis = threshold + 1;
+    if (abs(len_a - len_b) > threshold)
+        return dis;
+    for (int i = 0; i <= len_a; ++ i) {
+        int l = max(0, i - (int)threshold),
+                    r = min(len_b, i + (int)threshold);
+        int minDis = threshold + 1;
+        for (int j = l; j <= r; ++ j) {
+            if (i == 0)
+                d1[j] = j;
+            else if (j == 0)
+                d1[j] = i;
+            else {
+                if (a[i - 1] == b[j - 1])
+                    d1[j] = d0[j - 1];
+                else
+                    d1[j] = d0[j - 1] + 1;
+                if (j > l) d1[j] = min(d1[j], d1[j - 1] + 1);
+                if (j < i + threshold) d1[j] = min(d1[j], d0[j] + 1);
+            }
+            minDis = min(minDis, d1[j]);    
+        }
+        if (minDis > threshold)
+            return dis;
+        swap(d0, d1);
+    }
+    dis = d0[len_b];
+
+    return dis;
+}
+
+
+//search the similar string in terms of Jaccard
+int SimSearcher::searchJaccard(const char *query, double threshold,
+                               vector<pair<unsigned, double>> &result) {
     result.clear();
 
     //get the raw result
     string q(query);
     map<int, int> rawResult;
-    getRawResult(q, rawResult, kind, calcT(q, kind, threshold));
+    getRawResult(q, rawResult, JAC, calcTJAC(q, threshold));
 
     //eliminate the false positives
     for (auto & i : rawResult) {
         vector<int> d0(max(q.length(), _str[i.first].length()) + 1, 0);
         vector<int> d1(max(q.length(), _str[i.first].length()) + 1, 0);
-        TP dis = 0;
+        double dis = 0;
         if (q.length() >= _str[i.first].length())
-            dis = getDistance(_str[i.first], q, i.second, kind, threshold, d0, d1);
+            dis = jaccardDist(_str[i.first], q, i.second, threshold, d0, d1);
         else
-            dis = getDistance(q, _str[i.first], i.second, kind, threshold, d0, d1);
+            dis = jaccardDist(q, _str[i.first], i.second, threshold, d0, d1);
         bool flag = false;
-        switch(kind) {
-            case ED:
-                if (dis <= threshold)
-                    flag = true;
-                break;
-            case JAC:
-                if (dis >= threshold)
-                    flag = true;
-                break;
-            default:
-                break;
-        }
+
+        if (dis >= threshold)
+                flag = true;
         if (flag) {
             result.push_back(make_pair(i.first, dis));
             //cout << "fans_id = " << i.first << " " << _str[i.first] << "  " << i.second << "  " << dis << endl;
@@ -308,14 +290,35 @@ int SimSearcher::searchSimilarStr(const char *query, int kind, TP threshold,
     return (result.empty()) ? FAILURE : SUCCESS;
 }
 
-//search the similar string in terms of Jaccard
-int SimSearcher::searchJaccard(const char *query, double threshold,
-                               vector<pair<unsigned, double>> &result) {
-    return searchSimilarStr(query, JAC, threshold, result);
-}
-
 //search the similar string in terms of ED
 int SimSearcher::searchED(const char *query, unsigned threshold,
                           vector<pair<unsigned, unsigned>> &result) {
-    return searchSimilarStr(query, ED, threshold, result);
+    result.clear();
+
+    //get the raw result
+    string q(query);
+    map<int, int> rawResult;
+    getRawResult(q, rawResult, ED, calcTED(q, threshold));
+
+    //eliminate the false positives
+    for (auto & i : rawResult) {
+        vector<int> d0(max(q.length(), _str[i.first].length()) + 1, 0);
+        vector<int> d1(max(q.length(), _str[i.first].length()) + 1, 0);
+        unsigned dis = 0;
+        if (q.length() >= _str[i.first].length())
+            dis = edDist(_str[i.first], q, i.second, threshold, d0, d1);
+        else
+            dis = edDist(q, _str[i.first], i.second, threshold, d0, d1);
+        bool flag = false;
+    
+        if (dis <= threshold)
+            flag = true;
+
+        if (flag) {
+            result.push_back(make_pair(i.first, dis));
+            //cout << "fans_id = " << i.first << " " << _str[i.first] << "  " << i.second << "  " << dis << endl;
+        }
+    }
+
+    return (result.empty()) ? FAILURE : SUCCESS;
 }

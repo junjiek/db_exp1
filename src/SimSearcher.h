@@ -25,8 +25,9 @@ public:
     ~SimSearcher() {}
     void setQ(int q) { _q = q; }
     int createIndex(const char *filename, unsigned q);
-    template <typename TP>
-    int calcT(string &query, int kind, TP threshold);
+    // template <typename TP>
+    int calcTJAC(string &query, double threshold);
+    int calcTED(string &query, unsigned threshold);
     void generateList(string &query, vector<IList *> &list,
                       map<int, int> &rawResult, int kind, int T);
     void scanCount(string &query, vector<IList *> &list,
@@ -34,12 +35,10 @@ public:
     void divideSkip(string &query, vector<IList *> &list,
                     map<int, int> &rawResult, int T);
     void getRawResult(string &query, map<int, int> &rawResult, int kind, int T);
-    template <typename TP>
-    TP getDistance(string &a, string &b, int T, int kind, TP threshold,
-                   vector<int> &d0, vector<int> &d1);
-    template <typename TP>
-    int searchSimilarStr(const char *query, int kind, TP threshold,
-                         std::vector<std::pair<unsigned, TP> > &result);
+    unsigned edDist(string &a, string &b, int T, unsigned threshold,
+                    vector<int> &d0, vector<int> &d1);
+    double jaccardDist(string &a, string &b, int T, double threshold,
+                       vector<int> &d0, vector<int> &d1);
     int searchJaccard(const char *query, double threshold,
                       std::vector<std::pair<unsigned, double> > &result);
     int searchED(const char *query, unsigned threshold,
