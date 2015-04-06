@@ -1,3 +1,7 @@
-SimSearcher.o: SimSearcher.cpp SimSearcher.h
+SimSearcher.o: SimSearcher.cpp SimSearcher.h Gram.h IList.h
 
 SimSearcher.h:
+
+Gram.h:
+
+IList.h:

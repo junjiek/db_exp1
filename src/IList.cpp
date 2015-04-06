@@ -1,0 +1,15 @@
+#include "IList.h"
+#include <algorithm>
+
+using namespace std;
+
+void IList::insert(unsigned index) {
+    _list.push_back(index);
+    _map[index] = true;
+}
+
+bool IList::hasKey(int key) {
+    if (_map.find(key) == _map.end())
+        return false;
+    return true;
+}
