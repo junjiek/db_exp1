@@ -26,7 +26,7 @@ public:
 void SimSearcher::generateGram(string &s, unsigned line_num) {
     if (s.length() < _q)
         return;
-    _minSize = min(_minSize, (unsigned)s.length() - _q + 1);
+    _minGramSize = min(_minGramSize, (unsigned)s.length() - _q + 1);
     for (int i = 0; i < s.length() - _q + 1; ++ i) {
         string sub = s.substr(i, _q);
         if (_map.find(sub) == _map.end()) {
@@ -56,13 +56,14 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     return (_map.empty()) ? FAILURE : SUCCESS;
 }
 
-int SimSearcher::calcTJAC(string &query, double threshold) {
+int SimSearcher::jaccardT(string &query, double threshold) {
+
     return max((double)threshold * ((double)query.length() - _q + 1),
-              (((double)query.length() - _q + 1) + _minSize) / (1 + 1.0 / threshold));
+              (((double)query.length() - _q + 1) + _minGramSize) / (1 + 1.0 / threshold));
 
 }
 
-int SimSearcher::calcTED(string &query, unsigned threshold) {
+int SimSearcher::edT(string &query, unsigned threshold) {
     return max(0, (int)query.length() - (int)_q + 1 - (int)(threshold * _q));
 }
 
@@ -204,7 +205,7 @@ void SimSearcher::getRawResult(string &query, map<int, int> &rawResult,
     vector<IList *> list;
     rawResult.clear();
     generateList(query, list, rawResult, kind, T);
-    //scanCount(query, list, rawResult, T);
+    // scanCount(query, list, rawResult, T);
     divideSkip(query, list, rawResult, T);
 }
 
@@ -264,19 +265,19 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
     result.clear();
 
     //get the raw result
-    string q(query);
+    string _query(query);
     map<int, int> rawResult;
-    getRawResult(q, rawResult, JAC, calcTJAC(q, threshold));
+    getRawResult(_query, rawResult, JAC, jaccardT(_query, threshold));
 
     //eliminate the false positives
     for (auto & i : rawResult) {
-        vector<int> d0(max(q.length(), _str[i.first].length()) + 1, 0);
-        vector<int> d1(max(q.length(), _str[i.first].length()) + 1, 0);
+        vector<int> d0(max(_query.length(), _str[i.first].length()) + 1, 0);
+        vector<int> d1(max(_query.length(), _str[i.first].length()) + 1, 0);
         double dis = 0;
-        if (q.length() >= _str[i.first].length())
-            dis = jaccardDist(_str[i.first], q, i.second, threshold, d0, d1);
+        if (_query.length() >= _str[i.first].length())
+            dis = jaccardDist(_str[i.first], _query, i.second, threshold, d0, d1);
         else
-            dis = jaccardDist(q, _str[i.first], i.second, threshold, d0, d1);
+            dis = jaccardDist(_query, _str[i.first], i.second, threshold, d0, d1);
         bool flag = false;
 
         if (dis >= threshold)
@@ -296,19 +297,19 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
     result.clear();
 
     //get the raw result
-    string q(query);
+    string _query(query);
     map<int, int> rawResult;
-    getRawResult(q, rawResult, ED, calcTED(q, threshold));
+    getRawResult(_query, rawResult, ED, edT(_query, threshold));
 
     //eliminate the false positives
     for (auto & i : rawResult) {
-        vector<int> d0(max(q.length(), _str[i.first].length()) + 1, 0);
-        vector<int> d1(max(q.length(), _str[i.first].length()) + 1, 0);
+        vector<int> d0(max(_query.length(), _str[i.first].length()) + 1, 0);
+        vector<int> d1(max(_query.length(), _str[i.first].length()) + 1, 0);
         unsigned dis = 0;
-        if (q.length() >= _str[i.first].length())
-            dis = edDist(_str[i.first], q, i.second, threshold, d0, d1);
+        if (_query.length() >= _str[i.first].length())
+            dis = edDist(_str[i.first], _query, i.second, threshold, d0, d1);
         else
-            dis = edDist(q, _str[i.first], i.second, threshold, d0, d1);
+            dis = edDist(_query, _str[i.first], i.second, threshold, d0, d1);
         bool flag = false;
     
         if (dis <= threshold)
