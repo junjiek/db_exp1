@@ -31,27 +31,25 @@ int main(int argc, char **argv)
 	}
 	fclose(fp);
 
-	char buf[2050];
 	fp = fopen(argv[2], "r");
 	clock_t start, end;
 	while (getline(&line, &len, fp) != -1) {
-		if (sscanf(line, "%s\n", buf) != 1)
-			return 2;
+		line[strlen(line)-1] = '\0';
 		// ============= Jaccard =============
 		start = clock();
-		searcher.searchJaccard(buf, jaccardThreshold, resultJaccard);
+		searcher.searchJaccard(line, jaccardThreshold, resultJaccard);
 		end = clock();
 		printf("+ %lf %s (%.2lfs passed, %lu results found)\n",
-				jaccardThreshold, buf, (end-start)/1000.0, resultJaccard.size());
+				jaccardThreshold, line, (end-start)/1000.0, resultJaccard.size());
 		for (auto s: resultJaccard)
 			printf("  %lf %s\n", s.second, strs[s.first].c_str());
 
 		// =========== Edit Distance ===========
 		start = clock();
-		searcher.searchED(buf, edThreshold, resultED);
+		searcher.searchED(line, edThreshold, resultED);
 		end = clock();
 		printf("+ %d %s (%.2lfs passed, %lu results found)\n",
-			edThreshold, buf, (end-start)/1000.0, resultED.size());
+			edThreshold, line, (end-start)/1000.0, resultED.size());
 		for (auto s: resultED)
 			printf("  %d %s\n", s.second, strs[s.first].c_str());
 	}
