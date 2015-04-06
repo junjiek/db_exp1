@@ -1,5 +1,5 @@
-CXX=g++-4.8
-CXXFLAGS=-std=c++11 -Wall -O3 -MMD -MP
+CXX=g++
+CXXFLAGS=-std=c++11 -Wall -O0 -g -MMD -MP
 TARGET=simsearcher
 
 SRC=$(shell ls *.cpp)
