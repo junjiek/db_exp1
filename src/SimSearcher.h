@@ -36,7 +36,7 @@ public:
                    map<int, int> &rawResult, int T);
     void divideSkip(string &query, vector<IList *> &list,
                     map<int, int> &rawResult, int T);
-    void getRawResult(string &query, map<int, int> &rawResult, int kind, int T);
+    void filter(string &query, map<int, int> &rawResult, int kind, int T);
     unsigned edDist(string &a, string &b, int T, unsigned threshold,
                     vector<int> &d0, vector<int> &d1);
     double jaccardDist(string &a, string &b, int T, double threshold,

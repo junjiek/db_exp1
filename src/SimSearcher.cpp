@@ -35,12 +35,9 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
         _str.push_back(str);
     };
 
-    //sort the grams' lists
+    // sort the grams' lists
     for (auto & i : _map)
         i.second.sort();
-
-    // for (auto & i : _map)
-        // i.second.print();
 
     return (_map.empty()) ? FAILURE : SUCCESS;
 }
@@ -49,7 +46,7 @@ void SimSearcher::getQueryGramList(string &query, vector<IList *> &list,
                                    map<int, int> &rawResult, int kind, int T) {
     unordered_map<string, int> m;
     if (T != 0 && query.length() >= _q) {
-        //get the list of q-grams
+        // get the list of q-grams
         for (int i = 0; i < query.length() - _q + 1; ++ i) {
             string sub = query.substr(i, _q);
             if (m.find(sub) == m.end()) {
@@ -68,11 +65,13 @@ void SimSearcher::getQueryGramList(string &query, vector<IList *> &list,
         }
     }
     else {
-        //initialize the result
+        // when (T == 0 || query.length() < _q) calculate directly.
+
+        // initialize
         for (int i = 0; i < _str.size(); ++ i)
             rawResult[i] = 0;
 
-        //calculate the overlap
+        // calculate the overlap
         if (kind == JAC && query.length() >= _q) {
             for (int i = 0; i <= query.length() - _q; ++ i) {
                 string sub = query.substr(i, _q);
@@ -124,10 +123,11 @@ void SimSearcher::divideSkip(string &query, vector<IList *> &list,
                              map<int, int> &rawResult, int T) {
     if (T == 0 || query.length() < _q)
         return;
-    //sort the q-grams in terms of length in the descending order
+
+    //sort q-grams by length in the descending order
     sort(list.begin(), list.end(), list_Compare);
 
-    //get the L long lists
+    //get the L longest lists
     int L = min((double(T)) / (U * log((double)(*(list.back())).size()) + 1),
                 double(T - 1));
     vector<IList *> longList;
@@ -143,7 +143,7 @@ void SimSearcher::divideSkip(string &query, vector<IList *> &list,
     for (auto & i : list)
         pq.push(make_pair(i->getList().begin(), i->getList().end()));
 
-    //use MergeSkip to find ids that appears at leat T - L times
+    //use MergeSkip to find ids that appear >= (T - L) times in the short lists
     while(pq.size() >= T - L) {
         vector<pair<vector<int>::iterator, vector<int>::iterator> > t;
         t.push_back(pq.top());
@@ -153,35 +153,34 @@ void SimSearcher::divideSkip(string &query, vector<IList *> &list,
             if (*(pq.top().first) == *(t[0].first)) {
                 t.push_back(pq.top());
                 pq.pop();
-            }
-            else 
+            } else 
                 break;
         }
 
-        int n = t.size();
-        if (n >= (T - L)) {
-            //check if it appears on each long list and calculate the sum of appearances
+        int appearance = t.size();
+        if (appearance >= (T - L)) {
+            // calculate times of appearance in the L long lists.
             for (auto & i : longList)
                 if (i->hasKey(*(t[0].first)))
-                    ++ n;
+                    ++ appearance;
 
-            //if it appears at least T times then add it to result
-            if (n >= T)
-                rawResult[*(t[0].first)] = n;
+            // if total appearance times >= T, add to result.
+            if (appearance >= T)
+                rawResult[*(t[0].first)] = appearance;
 
-            //push next record on each popped list to the priority queue
+            // push next record on each popped list to the priority queue.
             for (auto & i : t)
                 if ((i.first + 1) != i.second)
                     pq.push(make_pair(i.first + 1, i.second));
-        }
-        else if (pq.size() > (T - L - 1 - n)) {
-            //pop T-L-1-n smallest records from the priority queue
-            for (int i = 0; i < T - L - 1 - n; ++ i) {
+        } else if (pq.size() >= (T - L - appearance)) {
+            // pop another (T-L-1-appearance) smallest records from the priority queue.
+            for (int i = 0; i < T - L - 1 - appearance; ++ i) {
                 t.push_back(pq.top());
                 pq.pop();
             }
 
-            //for each of the T-L-1 popped lists, find the smallest record whose value is not less than the value of the top of priority queue
+            // for the total T-L-1 popped lists, jump to the smallest record whose 
+            // value >= the value of the top of pq
             for (auto & i : t) {
                 vector<int>::iterator iter =
                     lower_bound(i.first, i.second, *(pq.top().first));
@@ -192,7 +191,7 @@ void SimSearcher::divideSkip(string &query, vector<IList *> &list,
     }
 }
 
-void SimSearcher::getRawResult(string &query, map<int, int> &rawResult,
+void SimSearcher::filter(string &query, map<int, int> &rawResult,
                                int kind, int T) {
     vector<IList *> list;
     rawResult.clear();
@@ -269,9 +268,9 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
     //get the raw result
     string _query(query);
     map<int, int> rawResult;
-    getRawResult(_query, rawResult, JAC, jaccardT(_query, threshold));
+    filter(_query, rawResult, JAC, jaccardT(_query, threshold));
 
-    //eliminate the false positives
+    //eliminate false positive
     for (auto & i : rawResult) {
         vector<int> d0(max(_query.length(), _str[i.first].length()) + 1, 0);
         vector<int> d1(max(_query.length(), _str[i.first].length()) + 1, 0);
@@ -301,7 +300,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
     //get the raw result
     string _query(query);
     map<int, int> rawResult;
-    getRawResult(_query, rawResult, ED, edT(_query, threshold));
+    filter(_query, rawResult, ED, edT(_query, threshold));
 
     //eliminate the false positives
     for (auto & i : rawResult) {
