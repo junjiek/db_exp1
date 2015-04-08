@@ -26,11 +26,12 @@ public:
     ~SimSearcher() {}
     void setQ(int q) { _q = q; }
     int createIndex(const char *filename, unsigned q);
-    // template <typename TP>
+    // calcultate T to filter the impossible ones
     int jaccardT(string &query, double threshold);
     int edT(string &query, unsigned threshold);
-    void generateList(string &query, vector<IList *> &list,
-                      map<int, int> &rawResult, int kind, int T);
+    //get the lists of grams for the query
+    void getQueryGramList(string &query, vector<IList *> &list,
+                          map<int, int> &rawResult, int kind, int T);
     void scanCount(string &query, vector<IList *> &list,
                    map<int, int> &rawResult, int T);
     void divideSkip(string &query, vector<IList *> &list,

@@ -10,19 +10,6 @@
 
 using namespace std;
 
-bool list_Compare(const IList *a, const IList *b) {
-    return (a->size() < b->size());
-};
-
-class Pair_Compare {
-public:
-    bool operator() (
-            const pair<vector<int>::iterator, vector<int>::iterator> &a, 
-            const pair<vector<int>::iterator, vector<int>::iterator> &b) {
-        return *(a.first) > *(b.first);
-    }
-};
-
 void SimSearcher::generateGram(string &s, unsigned line_num) {
     if (s.length() < _q)
         return;
@@ -56,27 +43,17 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     return (_map.empty()) ? FAILURE : SUCCESS;
 }
 
-int SimSearcher::jaccardT(string &query, double threshold) {
-
-    return max((double)threshold * ((double)query.length() - _q + 1),
-              (((double)query.length() - _q + 1) + _minGramSize) / (1 + 1.0 / threshold));
-
-}
-
-int SimSearcher::edT(string &query, unsigned threshold) {
-    return max(0, (int)query.length() - (int)_q + 1 - (int)(threshold * _q));
-}
-
-//get the lists of grams
-void SimSearcher::generateList(string &query, vector<IList *> &list,
-                                map<int, int> &rawResult, int kind, int T) {
+void SimSearcher::getQueryGramList(string &query, vector<IList *> &list,
+                                   map<int, int> &rawResult, int kind, int T) {
     unordered_map<string, int> m;
     if (T != 0 && query.length() >= _q) {
         //get the list of q-grams
-        for (int i = 0; i <= query.length() - _q; ++ i) {
+        for (int i = 0; i < query.length() - _q + 1; ++ i) {
             string sub = query.substr(i, _q);
             if (m.find(sub) == m.end()) {
+                // first-time appearance in the query grams 
                 if (_map.find(sub) != _map.end()) {
+                    // has appeared in the dataset
                     m[sub] = 0;
                     list.push_back(&_map[sub].getList(m[sub]));
                 }
@@ -128,11 +105,24 @@ void SimSearcher::scanCount(string &query, vector<IList *> &list,
     }
 }
 
+bool list_Compare(const IList *a, const IList *b) {
+    return (a->size() < b->size());
+};
+
+class Pair_Compare {
+public:
+    bool operator() (
+            const pair<vector<int>::iterator, vector<int>::iterator> &a, 
+            const pair<vector<int>::iterator, vector<int>::iterator> &b) {
+        return *(a.first) > *(b.first);
+    }
+};
+
 void SimSearcher::divideSkip(string &query, vector<IList *> &list,
                              map<int, int> &rawResult, int T) {
-    //sort the q-grams in terms of length in the descending order
     if (T == 0 || query.length() < _q)
         return;
+    //sort the q-grams in terms of length in the descending order
     sort(list.begin(), list.end(), list_Compare);
 
     //get the L long lists
@@ -146,8 +136,8 @@ void SimSearcher::divideSkip(string &query, vector<IList *> &list,
 
     //initialize the priority queue
     priority_queue<pair<vector<int>::iterator, vector<int>::iterator>,
-                    vector<pair<vector<int>::iterator, vector<int>::iterator>>,
-                    Pair_Compare> pq;
+                   vector<pair<vector<int>::iterator, vector<int>::iterator>>,
+                   Pair_Compare> pq;
     for (auto & i : list)
         pq.push(make_pair(i->getList().begin(), i->getList().end()));
 
@@ -204,8 +194,8 @@ void SimSearcher::getRawResult(string &query, map<int, int> &rawResult,
                                int kind, int T) {
     vector<IList *> list;
     rawResult.clear();
-    generateList(query, list, rawResult, kind, T);
-    // scanCount(query, list, rawResult, T);
+    getQueryGramList(query, list, rawResult, kind, T);
+    // scanCount(q uery, list, rawResult, T);
     divideSkip(query, list, rawResult, T);
 }
 
@@ -258,6 +248,16 @@ unsigned SimSearcher::edDist(string &a, string &b, int T, unsigned threshold,
     return dis;
 }
 
+int SimSearcher::jaccardT(string &query, double threshold) {
+    double queryGramSize = (double)query.length() - _q + 1;
+    return max(queryGramSize * threshold,
+              (queryGramSize + _minGramSize) * threshold / (1 + threshold));
+
+}
+
+int SimSearcher::edT(string &query, unsigned threshold) {
+    return max(0, (int)query.length() - (int)_q + 1 - (int)(threshold * _q));
+}
 
 //search the similar string in terms of Jaccard
 int SimSearcher::searchJaccard(const char *query, double threshold,
