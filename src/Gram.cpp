@@ -9,7 +9,7 @@ void Gram::insert(unsigned index) {
             return;
         }
     }
-
+    // if the gram appeared >1 times in one string
     IList l;
     l.insert(index);
     _list.push_back(l);

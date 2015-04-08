@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 #include "IList.h"
 
 using namespace std;
@@ -20,6 +21,12 @@ public:
 	int size() { return _list.size(); }
 	void sort();
 	void insert(unsigned index);
+	// for debug
+	void print() {
+		cout << "+ " << _str << ": " << endl;
+		for (auto& i : _list)
+			i.print();
+	}
 };
 
 

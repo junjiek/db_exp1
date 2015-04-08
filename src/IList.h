@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
+#include <iostream>
 
 using namespace std;
 
@@ -19,6 +20,14 @@ public:
     int size() const { return _list.size(); }
     void insert(unsigned index);
     bool hasKey(int key);
+    // for debug
+    void print() {
+        cout << "  ";
+        for (auto i : _list) {
+            cout << i << " ";
+        }
+        cout << endl;
+    }
 };
 
 #endif

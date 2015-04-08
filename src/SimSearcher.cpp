@@ -36,9 +36,11 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     };
 
     //sort the grams' lists
-    for (auto & i : _map) {
+    for (auto & i : _map)
         i.second.sort();
-    }
+
+    // for (auto & i : _map)
+        // i.second.print();
 
     return (_map.empty()) ? FAILURE : SUCCESS;
 }
