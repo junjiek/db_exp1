@@ -46,50 +46,21 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 void SimSearcher::getQueryGramList(string &query, vector<IList *> &list,
                                    map<int, int> &rawResult, int kind, int T) {
     unordered_map<string, int> m;
-    if (T != 0 && query.length() >= _q) {
-        // get the list of q-grams
-        for (int i = 0; i < query.length() - _q + 1; ++ i) {
-            string sub = query.substr(i, _q);
-            if (m.find(sub) == m.end()) {
-                // first-time appearance in the query grams 
-                if (_map.find(sub) != _map.end()) {
-                    // has appeared in the dataset
-                    m[sub] = 0;
-                    list.push_back(&_map[sub].getList(m[sub]));
-                }
-            }
-            else {
-                ++ m[sub];
-                if (m[sub] < _map[sub].size())
-                    list.push_back(&_map[sub].getList(m[sub]));
+    // get the list of q-grams
+    for (int i = 0; i < query.length() - _q + 1; ++ i) {
+        string sub = query.substr(i, _q);
+        if (m.find(sub) == m.end()) {
+            // first-time appearance in the query grams 
+            if (_map.find(sub) != _map.end()) {
+                // has appeared in the dataset
+                m[sub] = 0;
+                list.push_back(&_map[sub].getList(m[sub]));
             }
         }
-    }
-    else {
-        // when (T == 0 || query.length() < _q) calculate directly.
-
-        // initialize
-        for (int i = 0; i < _str.size(); ++ i)
-            rawResult[i] = 0;
-
-        // calculate the overlap
-        if (kind == JAC && query.length() >= _q) {
-            for (int i = 0; i <= query.length() - _q; ++ i) {
-                string sub = query.substr(i, _q);
-                if (m.find(sub) == m.end()) {
-                    if (_map.find(sub) != _map.end()) {
-                        m[sub] = 0;
-                        for (auto & j : _map[sub].getList(m[sub]).getList())
-                            rawResult[j] ++;
-                    }
-                }
-                else {
-                    ++ m[sub];
-                    if (m[sub] < _map[sub].size())
-                        for (auto & j : _map[sub].getList(m[sub]).getList())
-                            rawResult[j] ++;
-                }
-            }
+        else {
+            ++ m[sub];
+            if (m[sub] < _map[sub].size())
+                list.push_back(&_map[sub].getList(m[sub]));
         }
     }
 }
@@ -122,9 +93,6 @@ public:
 
 void SimSearcher::divideSkip(string &query, vector<IList *> &list,
                              map<int, int> &rawResult, int T) {
-    if (T == 0 || query.length() < _q)
-        return;
-
     //sort q-grams by length in the descending order
     sort(list.begin(), list.end(), list_Compare);
 
@@ -196,9 +164,38 @@ void SimSearcher::filter(string &query, map<int, int> &rawResult,
                                int kind, int T) {
     vector<IList *> list;
     rawResult.clear();
-    getQueryGramList(query, list, rawResult, kind, T);
-    // scanCount(q uery, list, rawResult, T);
-    divideSkip(query, list, rawResult, T);
+    if (T != 0 && query.length() >= _q) {
+        getQueryGramList(query, list, rawResult, kind, T);
+        // scanCount(q uery, list, rawResult, T);
+        divideSkip(query, list, rawResult, T);
+    } else {
+        // when (T == 0 || query.length() < _q) calculate directly.
+
+        // initialize
+        for (int i = 0; i < _str.size(); ++ i)
+            rawResult[i] = 0;
+
+        unordered_map<string, int> m;
+        // calculate the overlap
+        if (kind == JAC && query.length() >= _q) {
+            for (int i = 0; i <= query.length() - _q; ++ i) {
+                string sub = query.substr(i, _q);
+                if (m.find(sub) == m.end()) {
+                    if (_map.find(sub) != _map.end()) {
+                        m[sub] = 0;
+                        for (auto & j : _map[sub].getList(m[sub]).getList())
+                            rawResult[j] ++;
+                    }
+                }
+                else {
+                    ++ m[sub];
+                    if (m[sub] < _map[sub].size())
+                        for (auto & j : _map[sub].getList(m[sub]).getList())
+                            rawResult[j] ++;
+                }
+            }
+        }
+    }
 }
 
 double SimSearcher::jaccardDist(string& a, string& b, int T) {
