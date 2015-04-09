@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 #include <cassert>
+#include <climits>
 #include "IList.h"
 
 #define U 0.0085
@@ -200,8 +201,7 @@ void SimSearcher::filter(string &query, map<int, int> &rawResult,
     divideSkip(query, list, rawResult, T);
 }
 
-double SimSearcher::jaccardDist(string &a, string &b, int T, double threshold,
-                                vector<int> &d0, vector<int> &d1) {
+double SimSearcher::jaccardDist(string &a, string &b, int T) {
     double dis = 0;
     int len_a = a.length(), len_b = b.length();
 
@@ -213,7 +213,7 @@ double SimSearcher::jaccardDist(string &a, string &b, int T, double threshold,
     return dis;
 }
 
-unsigned SimSearcher::edDist(string &a, string &b, int T, unsigned threshold,
+unsigned SimSearcher::edDist(string &a, string &b, unsigned threshold,
                              vector<int> &d0, vector<int> &d1) {
     double dis = 0;
     int len_a = a.length(), len_b = b.length();
@@ -222,8 +222,8 @@ unsigned SimSearcher::edDist(string &a, string &b, int T, unsigned threshold,
     if (abs(len_a - len_b) > threshold)
         return dis;
     for (int i = 0; i <= len_a; ++ i) {
-        int l = max(0, i - (int)threshold),
-                    r = min(len_b, i + (int)threshold);
+        int l = max(0, i - (int)threshold);
+        int r = min(len_b, i + (int)threshold);
         int minDis = threshold + 1;
         for (int j = l; j <= r; ++ j) {
             if (i == 0)
@@ -249,6 +249,73 @@ unsigned SimSearcher::edDist(string &a, string &b, int T, unsigned threshold,
     return dis;
 }
 
+unsigned SimSearcher::levenshtein(string& s, string& t, unsigned threshold) {
+    int slen = s.length();
+    int tlen = t.length();
+
+    // swap so the smaller string is t; this reduces the memory usage
+    // of our buffers
+    if(tlen > slen) {
+        string stmp = s;
+        s = t;
+        t = stmp;
+        int itmp = slen;
+        slen = tlen;
+        tlen = itmp;
+    }
+
+    // p is the previous and d is the current distance array; dtmp is used in swaps
+    int* p = new int[tlen + 1];
+    int* d = new int[tlen + 1];
+    int* dtmp;
+
+    // the values necessary for our threshold are written; the ones after
+    // must be filled with large integers since the tailing member of the threshold 
+    // window in the bottom array will run min across them
+    int n = 0;
+    for(; n < min(tlen+1, (int)threshold + 1); ++n)
+        p[n] = n;
+    for (int i = n; i < tlen + 1; i++)
+        p[i] = INT_MAX;
+    for (int i = 0; i < tlen + 1; i++)
+        d[i] = INT_MAX;
+
+    // this is the core of the Levenshtein edit distance algorithm
+    // instead of actually building the matrix, two arrays are swapped back and forth
+    // the threshold limits the amount of entries that need to be computed if we're 
+    // looking for a match within a set distance
+    for(int row = 1; row < slen+1; ++row) {
+        char schar = s[row-1];
+        d[0] = row;
+
+        // set up our threshold window
+        int min_val = max(1, row - (int)threshold);
+        int max_val = min(tlen+1, row + (int)threshold + 1);
+
+        // since we're reusing arrays, we need to be sure to wipe the value left of the
+        // starting index; we don't have to worry about the value above the ending index
+        // as the arrays were initially filled with large integers and we progress to the right
+        if(min_val > 1)
+            d[min_val-1] = INT_MAX;
+
+        for(int col = min_val; col < max_val; ++col) {
+            if(schar == t[col-1])
+                d[col] = p[col-1];
+            else 
+                // min of: diagonal, left, up
+                d[col] = min(p[col-1], min(d[col-1], p[col])) + 1;
+        }
+        // swap our arrays
+        dtmp = p;
+        p = d;
+        d = dtmp;
+    }
+
+    if(p[tlen] == INT_MAX)
+        return -1;
+    return p[tlen];
+}
+
 int SimSearcher::jaccardT(string &query, double threshold) {
     double queryGramSize = (double)query.length() - _q + 1;
     return max(queryGramSize * threshold,
@@ -272,17 +339,14 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
 
     //eliminate false positive
     for (auto & i : rawResult) {
-        vector<int> d0(max(_query.length(), _str[i.first].length()) + 1, 0);
-        vector<int> d1(max(_query.length(), _str[i.first].length()) + 1, 0);
         double dis = 0;
         if (_query.length() >= _str[i.first].length())
-            dis = jaccardDist(_str[i.first], _query, i.second, threshold, d0, d1);
+            dis = jaccardDist(_str[i.first], _query, i.second);
         else
-            dis = jaccardDist(_query, _str[i.first], i.second, threshold, d0, d1);
+            dis = jaccardDist(_query, _str[i.first], i.second);
         bool flag = false;
-
         if (dis >= threshold)
-                flag = true;
+            flag = true;
         if (flag) {
             result.push_back(make_pair(i.first, dis));
             //cout << "fans_id = " << i.first << " " << _str[i.first] << "  " << i.second << "  " << dis << endl;
@@ -307,10 +371,19 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
         vector<int> d0(max(_query.length(), _str[i.first].length()) + 1, 0);
         vector<int> d1(max(_query.length(), _str[i.first].length()) + 1, 0);
         unsigned dis = 0;
-        if (_query.length() >= _str[i.first].length())
-            dis = edDist(_str[i.first], _query, i.second, threshold, d0, d1);
-        else
-            dis = edDist(_query, _str[i.first], i.second, threshold, d0, d1);
+        cout << "-------" << endl;
+        cout << _str[i.first] << endl;
+        cout << _query << endl;
+        cout << threshold << endl;
+
+        if (_query.length() >= _str[i.first].length()) {
+            dis = edDist(_str[i.first], _query, threshold, d0, d1);
+            cout << dis << ", " << levenshtein(_str[i.first], _query, threshold) << endl;
+        }
+        else {
+            dis = edDist(_query, _str[i.first], threshold, d0, d1);
+            cout << dis << ", " << levenshtein(_query, _str[i.first], threshold) << endl;
+        }
         bool flag = false;
     
         if (dis <= threshold)
