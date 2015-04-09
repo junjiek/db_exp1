@@ -249,31 +249,28 @@ unsigned SimSearcher::edDist(string &a, string &b, unsigned threshold,
     return dis;
 }
 
-unsigned SimSearcher::levenshtein(string& s, string& t, unsigned threshold) {
+int SimSearcher::levenshtein(string& s, string& t, int threshold) {
     int slen = s.length();
     int tlen = t.length();
 
     // swap so the smaller string is t; this reduces the memory usage
     // of our buffers
-    if(tlen > slen) {
-        string stmp = s;
-        s = t;
-        t = stmp;
-        int itmp = slen;
-        slen = tlen;
-        tlen = itmp;
+    if (tlen > slen) {
+        swap(s, t);
+        swap(slen, tlen);
     }
+    if (slen - tlen > threshold)
+        return INT_MAX;
 
     // p is the previous and d is the current distance array; dtmp is used in swaps
-    int* p = new int[tlen + 1];
-    int* d = new int[tlen + 1];
-    int* dtmp;
+    vector<int> d(tlen + 1, 0);
+    vector<int> p(tlen + 1, 0);
 
     // the values necessary for our threshold are written; the ones after
     // must be filled with large integers since the tailing member of the threshold 
     // window in the bottom array will run min across them
     int n = 0;
-    for(; n < min(tlen+1, (int)threshold + 1); ++n)
+    for (; n < min(tlen+1, (int)threshold + 1); ++n)
         p[n] = n;
     for (int i = n; i < tlen + 1; i++)
         p[i] = INT_MAX;
@@ -284,8 +281,7 @@ unsigned SimSearcher::levenshtein(string& s, string& t, unsigned threshold) {
     // instead of actually building the matrix, two arrays are swapped back and forth
     // the threshold limits the amount of entries that need to be computed if we're 
     // looking for a match within a set distance
-    for(int row = 1; row < slen+1; ++row) {
-        char schar = s[row-1];
+    for (int row = 1; row < slen+1; ++row) {
         d[0] = row;
 
         // set up our threshold window
@@ -295,24 +291,23 @@ unsigned SimSearcher::levenshtein(string& s, string& t, unsigned threshold) {
         // since we're reusing arrays, we need to be sure to wipe the value left of the
         // starting index; we don't have to worry about the value above the ending index
         // as the arrays were initially filled with large integers and we progress to the right
-        if(min_val > 1)
+        if (min_val > 1)
             d[min_val-1] = INT_MAX;
-
-        for(int col = min_val; col < max_val; ++col) {
-            if(schar == t[col-1])
+        int minDist = INT_MAX;
+        for (int col = min_val; col < max_val; ++col) {
+            if (s[row-1] == t[col-1])
                 d[col] = p[col-1];
-            else 
-                // min of: diagonal, left, up
+            else
                 d[col] = min(p[col-1], min(d[col-1], p[col])) + 1;
+            minDist = min(minDist, d[col]);
+        }
+
+        if (minDist > threshold) {
+            return INT_MAX;
         }
         // swap our arrays
-        dtmp = p;
-        p = d;
-        d = dtmp;
+        swap(p, d);
     }
-
-    if(p[tlen] == INT_MAX)
-        return -1;
     return p[tlen];
 }
 
@@ -344,13 +339,8 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
             dis = jaccardDist(_str[i.first], _query, i.second);
         else
             dis = jaccardDist(_query, _str[i.first], i.second);
-        bool flag = false;
         if (dis >= threshold)
-            flag = true;
-        if (flag) {
             result.push_back(make_pair(i.first, dis));
-            //cout << "fans_id = " << i.first << " " << _str[i.first] << "  " << i.second << "  " << dis << endl;
-        }
     }
 
     return (result.empty()) ? FAILURE : SUCCESS;
@@ -368,31 +358,9 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
 
     //eliminate the false positives
     for (auto & i : rawResult) {
-        vector<int> d0(max(_query.length(), _str[i.first].length()) + 1, 0);
-        vector<int> d1(max(_query.length(), _str[i.first].length()) + 1, 0);
-        unsigned dis = 0;
-        cout << "-------" << endl;
-        cout << _str[i.first] << endl;
-        cout << _query << endl;
-        cout << threshold << endl;
-
-        if (_query.length() >= _str[i.first].length()) {
-            dis = edDist(_str[i.first], _query, threshold, d0, d1);
-            cout << dis << ", " << levenshtein(_str[i.first], _query, threshold) << endl;
-        }
-        else {
-            dis = edDist(_query, _str[i.first], threshold, d0, d1);
-            cout << dis << ", " << levenshtein(_query, _str[i.first], threshold) << endl;
-        }
-        bool flag = false;
-    
+        unsigned dis = levenshtein(_str[i.first], _query, threshold);
         if (dis <= threshold)
-            flag = true;
-
-        if (flag) {
             result.push_back(make_pair(i.first, dis));
-            //cout << "fans_id = " << i.first << " " << _str[i.first] << "  " << i.second << "  " << dis << endl;
-        }
     }
 
     return (result.empty()) ? FAILURE : SUCCESS;
