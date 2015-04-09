@@ -201,9 +201,9 @@ void SimSearcher::filter(string &query, map<int, int> &rawResult,
     divideSkip(query, list, rawResult, T);
 }
 
-double SimSearcher::jaccardDist(string &a, string &b, int T) {
+double SimSearcher::jaccardDist(string& a, string& b, int T) {
     int len_a = a.length(), len_b = b.length();
-    if (len_a < _q)
+    if (min(len_a, len_b) < _q)
         return 0;
     return (double)T / (len_a + len_b - 2 * (_q - 1) - T);
 }
@@ -293,11 +293,7 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
 
     //eliminate false positive
     for (auto & i : rawResult) {
-        double dis = 0;
-        if (_query.length() >= _str[i.first].length())
-            dis = jaccardDist(_str[i.first], _query, i.second);
-        else
-            dis = jaccardDist(_query, _str[i.first], i.second);
+        double dis = jaccardDist(_query, _str[i.first], i.second);
         if (dis >= threshold)
             result.push_back(make_pair(i.first, dis));
     }
