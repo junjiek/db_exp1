@@ -202,54 +202,13 @@ void SimSearcher::filter(string &query, map<int, int> &rawResult,
 }
 
 double SimSearcher::jaccardDist(string &a, string &b, int T) {
-    double dis = 0;
     int len_a = a.length(), len_b = b.length();
-
-    dis = 0;
     if (len_a < _q)
-        return dis;
-    dis = (double)T / (len_a + len_b - 2 * (_q - 1) - T);
-
-    return dis;
+        return 0;
+    return (double)T / (len_a + len_b - 2 * (_q - 1) - T);
 }
 
-unsigned SimSearcher::edDist(string &a, string &b, unsigned threshold,
-                             vector<int> &d0, vector<int> &d1) {
-    double dis = 0;
-    int len_a = a.length(), len_b = b.length();
-    //cout << "a = " << a << endl;
-    dis = threshold + 1;
-    if (abs(len_a - len_b) > threshold)
-        return dis;
-    for (int i = 0; i <= len_a; ++ i) {
-        int l = max(0, i - (int)threshold);
-        int r = min(len_b, i + (int)threshold);
-        int minDis = threshold + 1;
-        for (int j = l; j <= r; ++ j) {
-            if (i == 0)
-                d1[j] = j;
-            else if (j == 0)
-                d1[j] = i;
-            else {
-                if (a[i - 1] == b[j - 1])
-                    d1[j] = d0[j - 1];
-                else
-                    d1[j] = d0[j - 1] + 1;
-                if (j > l) d1[j] = min(d1[j], d1[j - 1] + 1);
-                if (j < i + threshold) d1[j] = min(d1[j], d0[j] + 1);
-            }
-            minDis = min(minDis, d1[j]);    
-        }
-        if (minDis > threshold)
-            return dis;
-        swap(d0, d1);
-    }
-    dis = d0[len_b];
-
-    return dis;
-}
-
-int SimSearcher::levenshtein(string& s, string& t, int threshold) {
+int SimSearcher::levenshteinDist(string s, string t, int threshold) {
     int slen = s.length();
     int tlen = t.length();
 
@@ -358,7 +317,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
 
     //eliminate the false positives
     for (auto & i : rawResult) {
-        unsigned dis = levenshtein(_str[i.first], _query, threshold);
+        unsigned dis = levenshteinDist(_str[i.first], _query, threshold);
         if (dis <= threshold)
             result.push_back(make_pair(i.first, dis));
     }

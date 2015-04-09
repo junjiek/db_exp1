@@ -37,9 +37,7 @@ public:
     void divideSkip(string &query, vector<IList *> &list,
                     map<int, int> &rawResult, int T);
     void filter(string &query, map<int, int> &rawResult, int kind, int T);
-    unsigned edDist(string &a, string &b, unsigned threshold,
-                    vector<int> &d0, vector<int> &d1);
-    int levenshtein(string& s, string& t, int threshold);
+    int levenshteinDist(string s, string t, int threshold);
     double jaccardDist(string &a, string &b, int T);
     int searchJaccard(const char *query, double threshold,
                       std::vector<std::pair<unsigned, double> > &result);
