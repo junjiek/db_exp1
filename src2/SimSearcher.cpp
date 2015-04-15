@@ -34,7 +34,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 	ifstream fin(filename);
 	this->q = q;
 
-	// Create invert-table
+	// Create inverted-table
 	unordered_map<string, vector<unsigned>> originalGram;
 	vector<pair<string, vector<unsigned>>>	sortGramPair;
 	countGram.clear();
@@ -59,16 +59,18 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 			unsigned num;
 			for (int i = 0; i <= (int)(len - q); ++i) {
 				string gram(str.substr(i, q));
-				// first appearance
+				// First appearance
 				if (countGram.find(gram) == countGram.end()) {
 					originalGram[gram].push_back(id);
 					countGram[gram] = 0;
 				}
-				// Not first
+				// Appears n > 1 times
 				else {
 					num = countGram[gram]++;
 					ostringstream sout;
 					sout << gram << num;
+                    // Concat gram with num to mark apperance times of the gram 
+                    // in a record
 					originalGram[sout.str()].push_back(id);
 					countGram[sout.str()] = 0;
 				}
@@ -78,50 +80,24 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 	fin.close();
 	countID.resize(wordList.size());
 
-	// shortestStrLen = wordList.
-
-	// Sort the originalGram by the length of the id list(vector)
-	for (unordered_map<string, vector<unsigned>>::iterator it(originalGram.begin()); it != originalGram.end(); ++it) {
-		sortGramPair.push_back(*it);
-	}
+	// Sort the originalGram by the length of the id list
+    unordered_map<string, vector<unsigned>>::iterator it1 = originalGram.begin();
+    while (it1 != originalGram.end()) {
+		sortGramPair.push_back(*it1);
+        it1++;    
+    }
 	sort(sortGramPair.begin(), sortGramPair.end(), gramCompare);
 
 	// Link the gram(string) with the vector index(unsigned) with unordered_map
 	// and store the final sorted gram list
-	for (vector<pair<string, vector<unsigned>>>::iterator it(sortGramPair.begin()); it != sortGramPair.end(); ++it) {
-		sortGramList.push_back(it->second);
-		gram2id[it->first] = it - sortGramPair.begin();
+    vector<pair<string, vector<unsigned>>>::iterator it2 = sortGramPair.begin();
+	while (it2 != sortGramPair.end()) {
+		sortGramList.push_back(it2->second);
+		gram2id[it2->first] = it2 - sortGramPair.begin();
+        it2++;
 	}
 	maxLength = sortGramList.back().size();
 
-	/* Check the original invert-table */
-/*	ofstream logout("log.txt");
-	for (unordered_map<string, vector<unsigned>>::iterator it(originalGram.begin()); it != originalGram.end(); ++it)
-	{
-		logout << it->first << ':';
-		vector<unsigned> _vec = it->second;
-		for (vector<unsigned>::iterator _it(_vec.begin()); _it != _vec.end(); ++_it)
-		{
-			logout << *_it << ',';
-		}
-		logout << endl;
-	}
-	logout.close();
-*/
-	/* Check the sorted invert-table */
-/*	ofstream logsout("log_sorted.txt");
-	for (vector<pair<string, vector<unsigned>>>::iterator it(sortGramPair.begin()); it != sortGramPair.end(); ++it)
-	{
-		logsout << (it - sortGramPair.begin()) << ' ' << it->first << ':';
-		vector<unsigned> _vec = it->second;
-		for (vector<unsigned>::iterator _it(_vec.begin()); _it != _vec.end(); ++_it)
-		{
-			logsout << *_it << ',';
-		}
-		logsout << endl;
-	}
-	logsout.close();
-*/
 	return SUCCESS;
 }
 
