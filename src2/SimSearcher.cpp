@@ -20,9 +20,9 @@ SimSearcher::SimSearcher() {
 	q = 0;
 	shortestStrLen = MAX_LEN;
 	emptyID.clear();
-	wordList.clear();
+	strings.clear();
 	sortGramList.clear();
-	gram2id.clear();
+	gramIdMap.clear();
 }
 
 // Sort from short to long.
@@ -43,8 +43,8 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 
 	string str;
 	while (getline(fin, str)) {
-		unsigned id = wordList.size();
-		wordList.push_back(str);
+		unsigned id = strings.size();
+		strings.push_back(str);
 		unsigned len = str.length();
 		if (len < shortestStrLen)
 			shortestStrLen = len;
@@ -57,7 +57,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 			countGram.clear();
 			// Process same grams in one string
 			unsigned num;
-			for (int i = 0; i <= (int)(len - q); ++i) {
+			for (int i = 0; i < (int)(len - q - 1); ++i) {
 				string gram(str.substr(i, q));
 				// First appearance
 				if (countGram.find(gram) == countGram.end()) {
@@ -78,7 +78,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 		}
 	}
 	fin.close();
-	countID.resize(wordList.size());
+	countID.resize(strings.size());
 
 	// Sort the originalGram by the length of the id list
     unordered_map<string, vector<unsigned>>::iterator it1 = originalGram.begin();
@@ -93,7 +93,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     vector<pair<string, vector<unsigned>>>::iterator it2 = sortGramPair.begin();
 	while (it2 != sortGramPair.end()) {
 		sortGramList.push_back(it2->second);
-		gram2id[it2->first] = it2 - sortGramPair.begin();
+		gramIdMap[it2->first] = it2 - sortGramPair.begin();
         it2++;
 	}
 	maxLength = sortGramList.back().size();
@@ -105,30 +105,29 @@ void SimSearcher::doMakeGrams(const char* query) {
 	// Create the possible(initial) set of gram lists
 	possibleList.clear();			
 	countGram.clear();
-	unsigned num(0);
+	unsigned num  = 0;
 
 	string queryStr(query);
-	int len = queryStr.length();
 
-	for (int i = 0; i <= len - (int)q; ++i) {
+	for (int i = 0; i < (int)(queryStr.length() - q - 1); ++i) {
 		string gram(queryStr.substr(i, q));
 
-		// Not found: first appearance
+        // First appearance
 		if (countGram.find(gram) == countGram.end()) {
-			unordered_map<string, unsigned>::iterator findRes = gram2id.find(gram);
+			unordered_map<string, unsigned>::iterator findRes = gramIdMap.find(gram);
 			// This gram exists in the input file
-			if (findRes != gram2id.end())
+			if (findRes != gramIdMap.end())
 				possibleList.push_back(findRes->second);
 			countGram[gram] = 0;
 		}
-		/* Not first */
+        // Appears n > 1 times
 		else {
 			num = countGram[gram]++;
 			ostringstream sout;
 			sout << gram << num;
-			unordered_map<string, unsigned>::iterator findRes = gram2id.find(sout.str());
+			unordered_map<string, unsigned>::iterator findRes = gramIdMap.find(sout.str());
 			/* This gram exists in the input file */
-			if (findRes != gram2id.end())
+			if (findRes != gramIdMap.end())
 				possibleList.push_back(findRes->second);
 			countGram[sout.str()] = 0;
 		}
@@ -326,12 +325,12 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
 				/* Check the candidates and 'empty'(very short) words */
 				double jac(0.0);
 				for (unordered_set<unsigned>::iterator it(longResult.begin()); it != longResult.end(); ++it) {
-					jac = getJac(query, wordList[*it].c_str());
+					jac = getJac(query, strings[*it].c_str());
 					if (jac >= threshold)
 						result.push_back(make_pair(*it,jac));
 				}
 				for (vector<unsigned>::iterator it(emptyID.begin()); it != emptyID.end(); ++it) {
-					jac = getJac(query, wordList[*it].c_str());
+					jac = getJac(query, strings[*it].c_str());
 					if (jac >= threshold)
 						result.push_back(make_pair(*it, jac));
 				}
@@ -339,8 +338,8 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
 			} 
 			else {
 				double jac(0.0);
-				for (int i = 0; i < (int)wordList.size(); ++i) {
-					jac = getJac(query, wordList[i].c_str());
+				for (int i = 0; i < (int)strings.size(); ++i) {
+					jac = getJac(query, strings[i].c_str());
 					if (jac >= threshold)
 						result.push_back(make_pair(i, jac));
 				}
@@ -349,8 +348,8 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
 		/* The query word is too short: Just search */
 		else {
 			double jac(0.0);
-			for (int i = 0; i < (int)wordList.size(); ++i) {
-				jac = getJac(query, wordList[i].c_str());
+			for (int i = 0; i < (int)strings.size(); ++i) {
+				jac = getJac(query, strings[i].c_str());
 				if (jac >= threshold)
 					result.push_back(make_pair(i, jac));
 			}
@@ -359,8 +358,8 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
 	/* Just check it one by one */
 	else {
 		double jac(0.0);
-		for (int i = 0; i < (int)wordList.size(); ++i) {
-			jac = getJac(query, wordList[i].c_str());
+		for (int i = 0; i < (int)strings.size(); ++i) {
+			jac = getJac(query, strings[i].c_str());
 			if (jac >= threshold)
 				result.push_back(make_pair(i, jac));
 		}
@@ -450,12 +449,12 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 				/* Check the candidates and 'empty'(very short) words */
 				unsigned ed = 0;
 				for (unordered_set<unsigned>::iterator it(longResult.begin()); it != longResult.end(); ++it) {
-					ed = getED(query, wordList[*it].c_str(), threshold);
+					ed = getED(query, strings[*it].c_str(), threshold);
 					if (ed <= threshold)
 						result.push_back(make_pair(*it, ed));
 				}
 				for (vector<unsigned>::iterator it(emptyID.begin()); it != emptyID.end(); ++it) {
-					ed = getED(query, wordList[*it].c_str(), threshold);
+					ed = getED(query, strings[*it].c_str(), threshold);
 					if (ed <= threshold) {
 						result.push_back(make_pair(*it, ed));
 					}
@@ -463,8 +462,8 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 				sort(result.begin(), result.end(), resultCompare);
 			} 
 			else {
-				for (int i = 0; i < (int)wordList.size(); ++i) {
-					unsigned ed = getED(query, wordList[i].c_str(), threshold);
+				for (int i = 0; i < (int)strings.size(); ++i) {
+					unsigned ed = getED(query, strings[i].c_str(), threshold);
 					if (ed <= threshold)
 						result.push_back(make_pair(i, ed));
 				}
@@ -472,8 +471,8 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 		}
 		/* The query word is too short: Just search */
 		else {
-			for (int i = 0; i < (int)wordList.size(); ++i) {
-				unsigned ed = getED(query, wordList[i].c_str(), threshold);
+			for (int i = 0; i < (int)strings.size(); ++i) {
+				unsigned ed = getED(query, strings[i].c_str(), threshold);
 				if (ed <= threshold)
 					result.push_back(make_pair(i, ed));
 			}
@@ -481,8 +480,8 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 	} 
 	/* Just check it one by one */
 	else {
-		for (int i = 0; i < (int)wordList.size(); ++i) {
-			unsigned ed = getED(query, wordList[i].c_str(), threshold);
+		for (int i = 0; i < (int)strings.size(); ++i) {
+			unsigned ed = getED(query, strings[i].c_str(), threshold);
 			if (ed <= threshold)
 				result.push_back(make_pair(i, ed));
 		}

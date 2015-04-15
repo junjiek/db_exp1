@@ -19,16 +19,16 @@ private:
 
     /* vector of empty ID and sorted gram list(vector) */
     vector<unsigned> emptyID;
-    vector<string>  wordList;
+    vector<string>  strings;
 
     vector<vector<unsigned>>        sortGramList;
-    unordered_map<string, unsigned> gram2id;
+    unordered_map<string, unsigned> gramIdMap;
 
     /* 'Temporal' variable */
     vector<unsigned>                    startPos;       // start position of each list
     unordered_map<string, unsigned>     countGram;      // handle repeated grams
     vector<unsigned>                    possibleList;   // store possible index in the sortGram.
-    vector<unsigned>                    countID;        // countID[i]: appearance times of wordList[i]
+    vector<unsigned>                    countID;        // countID[i]: appearance times of strings[i]
     unordered_set<unsigned>             shortResult;    // candidate from the 'short' part (id)
     unordered_set<unsigned>             longResult;     // candidate from the 'long' part (id)
 
