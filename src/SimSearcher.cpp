@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cassert>
 #include <climits>
-#include "IList.h"
+#include "InvertedList.h"
 
 #define U 0.0085
 
@@ -43,7 +43,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     return (_map.empty()) ? FAILURE : SUCCESS;
 }
 
-void SimSearcher::getQueryGramList(string &query, vector<IList *> &list,
+void SimSearcher::getQueryGramList(string &query, vector<InvertedList *> &list,
                                    map<int, int> &rawResult, int kind, int T) {
     unordered_map<string, int> m;
     // get the list of q-grams
@@ -65,7 +65,7 @@ void SimSearcher::getQueryGramList(string &query, vector<IList *> &list,
     }
 }
 
-void SimSearcher::scanCount(string &query, vector<IList *> &list,
+void SimSearcher::scanCount(string &query, vector<InvertedList *> &list,
                             map<int, int> &rawResult, int T) {
     vector<int> counter(_str.size(), 0);
 
@@ -78,7 +78,7 @@ void SimSearcher::scanCount(string &query, vector<IList *> &list,
     }
 }
 
-bool list_Compare(const IList *a, const IList *b) {
+bool list_Compare(const InvertedList *a, const InvertedList *b) {
     return (a->size() < b->size());
 };
 
@@ -91,7 +91,7 @@ public:
     }
 };
 
-void SimSearcher::divideSkip(string &query, vector<IList *> &list,
+void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
                              map<int, int> &rawResult, int T) {
     //sort q-grams by length in the descending order
     sort(list.begin(), list.end(), list_Compare);
@@ -99,7 +99,7 @@ void SimSearcher::divideSkip(string &query, vector<IList *> &list,
     //get the L longest lists
     int L = min((double(T)) / (U * log((double)(*(list.back())).size()) + 1),
                 double(T - 1));
-    vector<IList *> longList;
+    vector<InvertedList *> longList;
     for (int i = 0; i < L && !list.empty(); ++ i) {
         longList.push_back(list.back());
         list.pop_back();
@@ -162,7 +162,7 @@ void SimSearcher::divideSkip(string &query, vector<IList *> &list,
 
 void SimSearcher::filter(string &query, map<int, int> &rawResult,
                                int kind, int T) {
-    vector<IList *> list;
+    vector<InvertedList *> list;
     rawResult.clear();
     if (T != 0 && query.length() >= _q) {
         getQueryGramList(query, list, rawResult, kind, T);

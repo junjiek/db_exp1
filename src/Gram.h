@@ -4,20 +4,20 @@
 #include <vector>
 #include <string>
 #include <iostream>
-#include "IList.h"
+#include "InvertedList.h"
 
 using namespace std;
 
 class Gram {
 private:
 	string _str;
-	vector<IList> _list;
+	vector<InvertedList> _list;
 public:
 	Gram() { _str = ""; }
 	Gram(string str) { _str = str; }
 	~Gram() {}
 	string getString() { return _str; }
-	IList & getList(int index) { return _list[index]; }
+	InvertedList & getList(int index) { return _list[index]; }
 	int size() { return _list.size(); }
 	void sort();
 	void insert(unsigned index);

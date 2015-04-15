@@ -1,0 +1,64 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+CXX	src/makefile	/^CXX=g++$/;"	m
+CXXFLAGS	src/makefile	/^CXXFLAGS=-std=c++11 -Wall -O0 -g -MMD -MP$/;"	m
+ED	src/SimSearcher.h	13;"	d
+FAILURE	src/SimSearcher.h	/^const int FAILURE = 1;$/;"	v
+GRAM_H	src/Gram.h	2;"	d
+Gram	src/Gram.h	/^	Gram() { _str = ""; }$/;"	f	class:Gram
+Gram	src/Gram.h	/^	Gram(string str) { _str = str; }$/;"	f	class:Gram
+Gram	src/Gram.h	/^class Gram {$/;"	c
+ILIST_H	src/IList.h	2;"	d
+IList	src/IList.h	/^    IList() {};$/;"	f	class:IList
+IList	src/IList.h	/^class IList {$/;"	c
+JAC	src/SimSearcher.h	14;"	d
+Pair_Compare	src/SimSearcher.cpp	/^class Pair_Compare {$/;"	c	file:
+SRC	src/makefile	/^SRC=$(shell ls *.cpp)$/;"	m
+SUCCESS	src/SimSearcher.h	/^const int SUCCESS = 0;$/;"	v
+SimSearcher	src/SimSearcher.h	/^    SimSearcher() { _minGramSize = INT_MAX; }$/;"	f	class:SimSearcher
+SimSearcher	src/SimSearcher.h	/^class SimSearcher {$/;"	c
+TARGET	src/makefile	/^TARGET=simsearcher$/;"	m
+U	src/SimSearcher.cpp	10;"	d	file:
+_list	src/Gram.h	/^	vector<IList> _list;$/;"	m	class:Gram
+_list	src/IList.h	/^    vector<int> _list;$/;"	m	class:IList
+_map	src/IList.h	/^    unordered_map<int, bool> _map;$/;"	m	class:IList
+_map	src/SimSearcher.h	/^    unordered_map<string, Gram> _map;$/;"	m	class:SimSearcher
+_minGramSize	src/SimSearcher.h	/^    unsigned _q, _minGramSize;$/;"	m	class:SimSearcher
+_q	src/SimSearcher.h	/^    unsigned _q, _minGramSize;$/;"	m	class:SimSearcher
+_str	src/Gram.h	/^	string _str;$/;"	m	class:Gram
+_str	src/SimSearcher.h	/^    vector<string> _str;$/;"	m	class:SimSearcher
+createIndex	src/SimSearcher.cpp	/^int SimSearcher::createIndex(const char *filename, unsigned q) {$/;"	f	class:SimSearcher
+divideSkip	src/SimSearcher.cpp	/^void SimSearcher::divideSkip(string &query, vector<IList *> &list,$/;"	f	class:SimSearcher
+edT	src/SimSearcher.cpp	/^int SimSearcher::edT(string &query, unsigned threshold) {$/;"	f	class:SimSearcher
+filter	src/SimSearcher.cpp	/^void SimSearcher::filter(string &query, map<int, int> &rawResult,$/;"	f	class:SimSearcher
+generateGram	src/SimSearcher.cpp	/^void SimSearcher::generateGram(string &s, unsigned line_num) {$/;"	f	class:SimSearcher
+getList	src/Gram.h	/^	IList & getList(int index) { return _list[index]; }$/;"	f	class:Gram
+getList	src/IList.h	/^    vector<int> & getList() { return _list; }$/;"	f	class:IList
+getQueryGramList	src/SimSearcher.cpp	/^void SimSearcher::getQueryGramList(string &query, vector<IList *> &list,$/;"	f	class:SimSearcher
+getString	src/Gram.h	/^	string getString() { return _str; }$/;"	f	class:Gram
+hasKey	src/IList.cpp	/^bool IList::hasKey(int key) {$/;"	f	class:IList
+insert	src/Gram.cpp	/^void Gram::insert(unsigned index) {$/;"	f	class:Gram
+insert	src/IList.cpp	/^void IList::insert(unsigned index) {$/;"	f	class:IList
+jaccardDist	src/SimSearcher.cpp	/^double SimSearcher::jaccardDist(string& a, string& b, int T) {$/;"	f	class:SimSearcher
+jaccardT	src/SimSearcher.cpp	/^int SimSearcher::jaccardT(string &query, double threshold) {$/;"	f	class:SimSearcher
+levenshteinDist	src/SimSearcher.cpp	/^int SimSearcher::levenshteinDist(string s, string t, int threshold) {$/;"	f	class:SimSearcher
+list_Compare	src/SimSearcher.cpp	/^bool list_Compare(const IList *a, const IList *b) {$/;"	f
+main	src/main.cpp	/^int main(int argc, char **argv)$/;"	f
+operator ()	src/SimSearcher.cpp	/^    bool operator() ($/;"	f	class:Pair_Compare
+print	src/Gram.h	/^	void print() {$/;"	f	class:Gram
+print	src/IList.h	/^    void print() {$/;"	f	class:IList
+scanCount	src/SimSearcher.cpp	/^void SimSearcher::scanCount(string &query, vector<IList *> &list,$/;"	f	class:SimSearcher
+searchED	src/SimSearcher.cpp	/^int SimSearcher::searchED(const char *query, unsigned threshold,$/;"	f	class:SimSearcher
+searchJaccard	src/SimSearcher.cpp	/^int SimSearcher::searchJaccard(const char *query, double threshold,$/;"	f	class:SimSearcher
+setQ	src/SimSearcher.h	/^    void setQ(int q) { _q = q; }$/;"	f	class:SimSearcher
+size	src/Gram.h	/^	int size() { return _list.size(); }$/;"	f	class:Gram
+size	src/IList.h	/^    int size() const { return _list.size(); }$/;"	f	class:IList
+sort	src/Gram.cpp	/^void Gram::sort() {$/;"	f	class:Gram
+sort	src/IList.h	/^    void sort() { std::sort(_list.begin(), _list.end()); }$/;"	f	class:IList
+~Gram	src/Gram.h	/^	~Gram() {}$/;"	f	class:Gram
+~IList	src/IList.h	/^    ~IList() {};$/;"	f	class:IList
+~SimSearcher	src/SimSearcher.h	/^    ~SimSearcher() {}$/;"	f	class:SimSearcher

@@ -30,11 +30,11 @@ public:
     int jaccardT(string &query, double threshold);
     int edT(string &query, unsigned threshold);
     //get the lists of grams for the query
-    void getQueryGramList(string &query, vector<IList *> &list,
+    void getQueryGramList(string &query, vector<InvertedList *> &list,
                           map<int, int> &rawResult, int kind, int T);
-    void scanCount(string &query, vector<IList *> &list,
+    void scanCount(string &query, vector<InvertedList *> &list,
                    map<int, int> &rawResult, int T);
-    void divideSkip(string &query, vector<IList *> &list,
+    void divideSkip(string &query, vector<InvertedList *> &list,
                     map<int, int> &rawResult, int T);
     void filter(string &query, map<int, int> &rawResult, int kind, int T);
     int levenshteinDist(string s, string t, int threshold);
