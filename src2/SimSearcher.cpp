@@ -58,7 +58,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 			gramCount.clear();
 			// Process same grams in one string
 			unsigned num;
-			for (int i = 0; i < (int)(len - q - 1); ++i) {
+			for (int i = 0; i < (int)(len - q + 1); ++i) {
 				string gram(str.substr(i, q));
 				// First appearance
 				if (gramCount.find(gram) == gramCount.end()) {
@@ -110,7 +110,7 @@ void SimSearcher::getQueryGramList(const char* query) {
 
 	string queryStr(query);
 
-	for (int i = 0; i < (int)(queryStr.length() - q - 1); ++i) {
+	for (int i = 0; i < (int)(queryStr.length() - q + 1); ++i) {
 		string gram(queryStr.substr(i, q));
         // First appearance
 		if (gramCount.find(gram) == gramCount.end()) {
