@@ -36,6 +36,7 @@ private:
     // calcultate T to filter the impossible ones
     int jaccardT(const char* query, double threshold);
     int edT(const char* query, unsigned threshold);
+    bool divideSkip(const char* query, int T);
 
     double getJac(const char *query, const char *word);
     void getQueryGramList(const char *query);

@@ -15,6 +15,7 @@
 using namespace std;
 
 const int MAX_LEN = 5000;
+const double U = 0.0085;
 
 SimSearcher::SimSearcher() {
 	q = 0;
@@ -431,73 +432,55 @@ int SimSearcher::edT(const char* query, unsigned threshold) {
     return strlen(query) - (int)q + 1 - (int)(threshold * q);
 }
 
-void filter
+bool SimSearcher::divideSkip(const char *query, int T) {
+    if (T <= 0)
+        return false;
+    int len = strlen(query);
+    if (len <= (int)q || len < 5)
+        return false;
+    getQueryGramList(query);
+    //get the L longest lists
+    int L = min((double(T)) / (U * log((double)(maxLength)) + 1),
+                double(T - 1));
 
-int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<unsigned, unsigned> > &result) {
-	result.clear();
-	// T-occurrence threshold
-	int T = strlen(query) - q + 1 - threshold * q;
-	const double mu = 0.0085;
+    int shortNum = possibleList.size() - int(L);
+    if (shortNum <= 0)
+        return false;
+    // Use MergeSkip on L shortest list
+    mergeSkip(query, T - L, shortNum);
+    mergeOpt(shortNum, possibleList.size(), T);
 
-	// DivideSkip algorithm
-	if (T > 0) {
-		unsigned L = T / (mu * log10(double(maxLength)) + 1);		// important parameter in the DivideSkip algorithm
+    return true;
+}
 
-		// cout << "; L = " << L << endl;
-		unsigned len = strlen(query);
-		/* Parse the grams if the query string is long enough */
-		if (len > q && len >= 5) {
-			getQueryGramList(query);
 
-			int shortNum = possibleList.size() - int(L);
-
-			if (shortNum > 0) {
-				/* Use MergeSkip algorithm on L_short set, if not empty */	
-				mergeSkip(query, T - L, shortNum);
-				
-				/* Use MergeOpt algorithm on L_long set. */
-				mergeOpt(shortNum, possibleList.size(), T);
-				
-				/* Check the candidates and 'empty'(very short) words */
-				unsigned ed = 0;
-				for (unordered_set<unsigned>::iterator it(longResult.begin()); it != longResult.end(); ++it) {
-					ed = getED(query, strings[*it].c_str(), threshold);
-					if (ed <= threshold)
-						result.push_back(make_pair(*it, ed));
-				}
-				for (vector<unsigned>::iterator it(emptyID.begin()); it != emptyID.end(); ++it) {
-					ed = getED(query, strings[*it].c_str(), threshold);
-					if (ed <= threshold) {
-						result.push_back(make_pair(*it, ed));
-					}
-				}
-				sort(result.begin(), result.end(), resultCompare);
-			} else {
-				for (int i = 0; i < (int)strings.size(); ++i) {
-					unsigned ed = getED(query, strings[i].c_str(), threshold);
-					if (ed <= threshold)
-						result.push_back(make_pair(i, ed));
-				}
-			}
-		}
-		/* The query word is too short: Just search */
-		else {
-			for (int i = 0; i < (int)strings.size(); ++i) {
-				unsigned ed = getED(query, strings[i].c_str(), threshold);
-				if (ed <= threshold)
-					result.push_back(make_pair(i, ed));
-			}
-		}
-	} 
-	/* Just check it one by one */
-	else {
-		for (int i = 0; i < (int)strings.size(); ++i) {
-			unsigned ed = getED(query, strings[i].c_str(), threshold);
-			if (ed <= threshold)
-				result.push_back(make_pair(i, ed));
-		}
-	}
-
-	return SUCCESS;
+int SimSearcher::searchED(const char *query, unsigned threshold,
+                          vector<pair<unsigned, unsigned> > &result) {
+    result.clear();
+    if (divideSkip(query, edT(query, threshold))) {
+        unsigned ed = 0;
+        unordered_set<unsigned>::iterator it1 = longResult.begin();
+        while (it1 != longResult.end()) {
+            ed = getED(query, strings[*it1].c_str(), threshold);
+            if (ed <= threshold)
+                result.push_back(make_pair(*it1, ed));
+            ++it1;
+        }
+        vector<unsigned>::iterator it2 = emptyID.begin();
+        while (it2 != emptyID.end()) {
+            ed = getED(query, strings[*it2].c_str(), threshold);
+            if (ed <= threshold)
+                result.push_back(make_pair(*it2, ed));
+            ++it2;
+        }
+        sort(result.begin(), result.end(), resultCompare);
+    } else {
+        for (int i = 0; i < (int)strings.size(); ++i) {
+            unsigned ed = getED(query, strings[i].c_str(), threshold);
+            if (ed <= threshold)
+                result.push_back(make_pair(i, ed));
+        }
+    }
+    return (result.empty()) ? FAILURE : SUCCESS;
 }
 
