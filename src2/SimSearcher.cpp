@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
+#include <climits>
 
 using namespace std;
 
@@ -371,54 +372,43 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
 	return SUCCESS;
 }
 
-unsigned getED(const char *query, const char *word, int th) {
+unsigned getED(const char *s, const char *t, int threshold) {
 	static int distance[MAX_LEN][MAX_LEN];
+	int slen(strlen(s)), tlen(strlen(t));
+	 // cout << "slen" << slen << endl << tlen << endl;
+	if (abs(slen - tlen) > threshold)
+		return INT_MAX;
 
-	int lenQ(strlen(query)), lenW(strlen(word));
-	 // cout << "lenQ" << lenQ << endl << lenW << endl;
-	int ed(0);
-	if (abs(lenQ - lenW) > th)
-		return th + 1;
+	for (int i = 0; i <= slen; ++i)
+		distance[i][0] = i;
+	for (int i = 0; i <= tlen; ++i)
+		distance[0][i] = i;
 
-	for (int q = 0; q <= lenQ; ++q)
-		distance[q][0] = q;
-	for (int w = 0; w <= lenW; ++w)
-		distance[0][w] = w;
-
-	int wSt, wEd, tmpMin(th + 1);
-	for (int q = 1; q <= lenQ; ++q) {
-		wSt = max(1, q - th);
-		wEd = min(lenW, q + th);
-		tmpMin = th + 1;
-		for (int w = wSt; w <= wEd; ++w) {
-			// query[q - 1] is the q_th char of query
-			if (query[q - 1] == word[w - 1])
-				distance[q][w] = distance[q - 1][w - 1];
+	int minDist = threshold + 1;
+	for (int i = 1; i <= slen; ++i) {
+		int l = max(1, i - threshold);
+		int r = min(tlen, i + threshold);
+		minDist = threshold + 1;
+		for (int j = l; j <= r; ++j) {
+			if (s[i - 1] == t[j - 1])
+				distance[i][j] = distance[i - 1][j - 1];
 			else
-				distance[q][w] = distance[q - 1][w - 1] + 1;
+				distance[i][j] = distance[i - 1][j - 1] + 1;
 			
-			// distance[q][w] = distance[q - 1][w - 1] + (query[q - 1] != word[w - 1]?1:0);
-			if (abs(q - 1 - w) <= th && distance[q][w] > distance[q - 1][w] + 1)
-				distance[q][w] = distance[q - 1][w] + 1;
-			if (abs(w - 1 - q) <= th && distance[q][w] > distance[q][w - 1] + 1)
-				distance[q][w] = distance[q][w - 1] + 1;
+			if (abs(i - 1 - j) <= threshold && distance[i][j] > distance[i - 1][j] + 1)
+				distance[i][j] = distance[i - 1][j] + 1;
+			if (abs(j - 1 - i) <= threshold && distance[i][j] > distance[i][j - 1] + 1)
+				distance[i][j] = distance[i][j - 1] + 1;
 			
-			if (distance[q][w] < tmpMin)
-				tmpMin = distance[q][w];
+			if (distance[i][j] < minDist)
+				minDist = distance[i][j];
 
-			// cout << q << ',' << w << ':' << distance[q][w] << ' ';
 		}
-		// cout << endl;
-		// Break: no need to search any more
-		if (tmpMin > th)
-			break;
+		if (minDist > threshold)
+			return INT_MAX;
 	}
-	if (tmpMin <= th)
-		ed = distance[lenQ][lenW];
-	else
-		ed = th + 1;
-	
-	return ed;
+
+    return distance[slen][tlen];	
 }
 
 int SimSearcher::jaccardT(const char* query, double threshold) {
