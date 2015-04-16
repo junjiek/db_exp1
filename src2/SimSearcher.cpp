@@ -157,11 +157,11 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 	startPos.resize(sortGramList.size());
 
 	unsigned cnt = 0;
-	/* Initialize the heap */
+	// Initialize the heap
 	for (int i = 0; i < shortNum; ++i)
 		heap.push(make_pair(sortGramList[possibleList[i]].front(), possibleList[i]));
 
-	/* MergeSkip */
+	// MergeSkip 
 	while (!heap.empty()) {
 		topVal = heap.top().first;
 		cnt = 0;
@@ -245,17 +245,16 @@ double SimSearcher::getJac(const char *query, const char *word) {
 	int interNum(0);
 
 	gramCount.clear();
-	/* Process same grams in one string */
 	unsigned num, lenQ(strlen(query)), lenW(strlen(word));
 	string strQ(query), strW(word);
 	for (int i = 0; i <= (int)(lenQ - q); ++i) {
 		string gram(strQ.substr(i, q));
-		/* Not found: first appearance */
+        // First appearance
 		if (gramCount.find(gram) == gramCount.end()) {
 			interSet.insert(gram);
 			gramCount[gram] = 0;
 		}
-		/* Not first */
+        // Appears > 1 times
 		else {
 			num = gramCount[gram]++;
 			ostringstream sout;
@@ -268,13 +267,13 @@ double SimSearcher::getJac(const char *query, const char *word) {
 	gramCount.clear();
 	for (int j = 0; j <= (int)(lenW - q); ++j) {
 		string gram(strW.substr(j, q));
-		/* Not found: first appearance */
+        // First appearance
 		if (gramCount.find(gram) == gramCount.end()) {
 			if (interSet.find(gram) != interSet.end())
 				++interNum;
 			gramCount[gram] = 0;
 		}
-		/* Not first */
+        // Appears > 1 times
 		else {
 			num = gramCount[gram]++;
 			ostringstream sout;
@@ -285,7 +284,8 @@ double SimSearcher::getJac(const char *query, const char *word) {
 		}
 	}
 	
-	int Gq(max(0, int(lenQ - q + 1))), Gw(max(0, int(lenW - q + 1)));
+	int Gq = max(0, int(lenQ - q + 1));
+    int Gw = max(0, int(lenW - q + 1));
 	return double(interNum) / (Gq + Gw - interNum);
 }
 
