@@ -5,8 +5,8 @@
 #include <iostream>
 #include <cassert>
 #include <climits>
+#include <unordered_set>
 #include "InvertedList.h"
-
 #define U 0.0085
 
 using namespace std;
@@ -14,7 +14,6 @@ using namespace std;
 void SimSearcher::generateGramED(string &s, unsigned line_num) {
     if (s.length() < _q)
         return;
-    // _minGramSize = min(_minGramSize, (unsigned)s.length() - _q + 1);
     for (int i = 0; i < s.length() - _q + 1; ++ i) {
         string sub = s.substr(i, _q);
         if (_map.find(sub) == _map.end()) {
@@ -30,7 +29,9 @@ void SimSearcher::generateGramJac(string &s, unsigned line_num) {
     int nend = 0;   
     int nbegin = 0;
     string sub = "";
-    while(nend != -1) {   
+    int gramSize = 0;
+    while(nend != -1) {
+        gramSize ++;   
         nend = s.find_first_of(" ", nbegin);   
         if(nend == -1)
             sub = s.substr(nbegin, s.length()-nbegin);
@@ -43,6 +44,8 @@ void SimSearcher::generateGramJac(string &s, unsigned line_num) {
         };
         _mapJac[sub].insert(line_num);
     }
+    _minGramSize = min(_minGramSize, gramSize);
+
 }
 
 int SimSearcher::createIndex(const char *filename, unsigned q) {
@@ -220,11 +223,41 @@ void SimSearcher::filter(string &query, map<int, int> &rawResult,
     }
 }
 
-double SimSearcher::jaccardDist(string& a, string& b, int T) {
-    int len_a = a.length(), len_b = b.length();
-    if (min(len_a, len_b) < _q)
-        return 0;
-    return (double)T / (len_a + len_b - 2 * (_q - 1) - T);
+double SimSearcher::jaccardDist(string& a, string& b) {
+    // int len_a = a.length(), len_b = b.length();
+    // if (min(len_a, len_b) < _q)
+    //     return 0;
+    // return (double)T / (len_a + len_b - 2 * (_q - 1) - T);
+    unordered_set<string> interSet;
+    int interNum = 0;
+
+    int nend = 0, nbegin = 0;
+    string sub = "";
+    int gramSizeA = 0;
+    while (nend != -1) {
+        gramSizeA ++;   
+        nend = a.find_first_of(" ", nbegin);   
+        if(nend == -1)
+            sub = a.substr(nbegin, a.length()-nbegin);
+        else  
+            sub = a.substr(nbegin, nend-nbegin);
+        nbegin = nend + 1;
+        interSet.insert(sub);
+    }
+    nend = nbegin = 0;
+    int gramSizeB = 0;
+    while (nend != -1) {
+        gramSizeB ++;   
+        nend = b.find_first_of(" ", nbegin);   
+        if(nend == -1)
+            sub = b.substr(nbegin, b.length()-nbegin);
+        else  
+            sub = b.substr(nbegin, nend-nbegin);
+        nbegin = nend + 1;
+        if (interSet.find(sub) != interSet.end())
+            ++interNum;
+    }
+    return double(interNum) / (gramSizeA + gramSizeB - interNum);
 }
 
 int SimSearcher::levenshteinDist(string s, string t, int threshold) {
@@ -312,7 +345,7 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
 
     //eliminate false positive
     for (auto & i : rawResult) {
-        double dis = jaccardDist(_query, _str[i.first], i.second);
+        double dis = jaccardDist(_query, _str[i.first]);
         if (dis >= threshold)
             result.push_back(make_pair(i.first, dis));
     }

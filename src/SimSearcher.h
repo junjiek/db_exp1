@@ -18,7 +18,8 @@ using namespace std;
 class SimSearcher {
 private:
     vector<string> _str;
-    unsigned _q, _minGramSize;
+    unsigned _q;
+    int _minGramSize;
     unordered_map<string, Gram> _map;
     unordered_map<string, Gram> _mapJac;
     void generateGramED(string &s, unsigned line_num);
@@ -40,7 +41,7 @@ public:
                     map<int, int> &rawResult, int T);
     void filter(string &query, map<int, int> &rawResult, int kind, int T);
     int levenshteinDist(string s, string t, int threshold);
-    double jaccardDist(string &a, string &b, int T);
+    double jaccardDist(string &a, string &b);
     int searchJaccard(const char *query, double threshold,
                       std::vector<std::pair<unsigned, double> > &result);
     int searchED(const char *query, unsigned threshold,
