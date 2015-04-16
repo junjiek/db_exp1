@@ -146,17 +146,16 @@ struct heapCompare {
 };
 
 void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum) {
-	// pair: <wordID, possible gram list ID>
+	// pair: <recordID, possible list ID>
 	priority_queue<pair<unsigned, unsigned>, vector<pair<unsigned, unsigned>>,
                         heapCompare> heap;
 	poppedLists.clear();
 	shortResult.clear();
 
 	unsigned topVal;
-	startPos.clear();
-	startPos.resize(sortGramList.size());
+	headPos.clear();
+	headPos.resize(sortGramList.size());
 
-	unsigned cnt = 0;
 	// Initialize the heap
 	for (int i = 0; i < shortNum; ++i)
 		heap.push(make_pair(sortGramList[possibleList[i]].front(), possibleList[i]));
@@ -164,25 +163,30 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 	// MergeSkip 
 	while (!heap.empty()) {
 		topVal = heap.top().first;
-		cnt = 0;
+		unsigned count = 0;
 		poppedLists.clear();
+        // Pop all the same value on the top
 		while (!heap.empty() && heap.top().first == topVal) {
-			++cnt;
+			++count;
 			poppedLists.push_back(heap.top());
 			heap.pop();
 		}
-		if (cnt >= threshold) {
+        // Appear more than threshold times Select as a candidate
+		if (count >= threshold) {
 			shortResult.insert(topVal);
-			countID[topVal] = cnt;
-			for (vector<pair<unsigned, unsigned>>::iterator it(poppedLists.begin()); it != poppedLists.end(); ++it) {
+			countID[topVal] = count;
+            vector<pair<unsigned, unsigned>>::iterator it = poppedLists.begin();
+			while (it != poppedLists.end()) {
 				vector<unsigned> &currList = sortGramList[it->second];
-				if (++startPos[it->second] < currList.size()) {
-					heap.push(make_pair(currList[startPos[it->second]], it->second));
+				if (++headPos[it->second] < currList.size()) {
+					heap.push(make_pair(currList[headPos[it->second]], it->second));
 				}
+                ++it;
 			}
 		}
-		else {
-			for (int i = 0; !heap.empty() && i < (int)(threshold - 1 - cnt); ++i) {
+        // Pop impossible ones
+        else {
+			for (int i = 0; !heap.empty() && i < (int)(threshold - 1 - count); ++i) {
 				poppedLists.push_back(heap.top());
 				heap.pop();
 			}
@@ -190,40 +194,19 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 				break;
 			
 			topVal = heap.top().first;
-			for (vector<pair<unsigned, unsigned>>::iterator it(poppedLists.begin()); it != poppedLists.end(); ++it) {
+            vector<pair<unsigned, unsigned>>::iterator it(poppedLists.begin());
+			while (it != poppedLists.end()) {
 				vector<unsigned> &currList = sortGramList[it->second];
-				
+				// Jump to the smallest record whose value >= heap top
 				vector<unsigned>::iterator findRes = lower_bound(currList.begin(), currList.end(), topVal);
 				if (findRes != currList.end()) {
 					heap.push(make_pair(*findRes, it->second));
 				}
-				startPos[it->second] = findRes - currList.begin();
-				/*bool brk(0);
-				for (vector<unsigned>::iterator jt(currList.begin()); jt != currList.end(); ++jt)
-				{
-					if (*jt >= topVal)
-					{
-						heap.push(make_pair(*jt, it->second));
-						// startPos[it->second] = jt - currList.begin();
-						startPos[it->second] = jt - currList.begin();
-						brk = 1;
-						break;
-					}
-				}
-				if (!brk)
-				{
-					startPos[it->second] =currList.size();
-				}*/
+				headPos[it->second] = findRes - currList.begin();
+                ++it;
 			}
 		}
 	}
-
-/*	cout << "start pos: " << endl;
-	for (int i = 0; i < shortNum; ++i)
-	{
-		cout << i << ',' << startPos[i] << endl;
-	}
-*/
 }
 
 void SimSearcher::mergeOpt(unsigned start, unsigned end, unsigned th) {
@@ -337,43 +320,105 @@ int SimSearcher::jaccardT(const char* query, double threshold) {
 
 }
 
-unsigned getED(const char *s, const char *t, int threshold) {
-	static int distance[MAX_LEN][MAX_LEN];
-	int slen(strlen(s)), tlen(strlen(t));
-	 // cout << "slen" << slen << endl << tlen << endl;
-	if (abs(slen - tlen) > threshold)
-		return INT_MAX;
+// unsigned getED(const char *s, const char *t, int threshold) {
+// 	static int distance[MAX_LEN][MAX_LEN];
+// 	int slen(strlen(s)), tlen(strlen(t));
+// 	 // cout << "slen" << slen << endl << tlen << endl;
+// 	if (abs(slen - tlen) > threshold)
+// 		return INT_MAX;
 
-	for (int i = 0; i <= slen; ++i)
-		distance[i][0] = i;
-	for (int i = 0; i <= tlen; ++i)
-		distance[0][i] = i;
+// 	for (int i = 0; i <= slen; ++i)
+// 		distance[i][0] = i;
+// 	for (int i = 0; i <= tlen; ++i)
+// 		distance[0][i] = i;
 
-	int minDist = threshold + 1;
-	for (int i = 1; i <= slen; ++i) {
-		int l = max(1, i - threshold);
-		int r = min(tlen, i + threshold);
-		minDist = threshold + 1;
-		for (int j = l; j <= r; ++j) {
-			if (s[i - 1] == t[j - 1])
-				distance[i][j] = distance[i - 1][j - 1];
-			else
-				distance[i][j] = distance[i - 1][j - 1] + 1;
+// 	int minDist = threshold + 1;
+// 	for (int i = 1; i <= slen; ++i) {
+// 		int l = max(1, i - threshold);
+// 		int r = min(tlen, i + threshold);
+// 		minDist = threshold + 1;
+// 		for (int j = l; j <= r; ++j) {
+// 			if (s[i - 1] == t[j - 1])
+// 				distance[i][j] = distance[i - 1][j - 1];
+// 			else
+// 				distance[i][j] = distance[i - 1][j - 1] + 1;
 			
-			if (abs(i - 1 - j) <= threshold && distance[i][j] > distance[i - 1][j] + 1)
-				distance[i][j] = distance[i - 1][j] + 1;
-			if (abs(j - 1 - i) <= threshold && distance[i][j] > distance[i][j - 1] + 1)
-				distance[i][j] = distance[i][j - 1] + 1;
+// 			if (abs(i - 1 - j) <= threshold && distance[i][j] > distance[i - 1][j] + 1)
+// 				distance[i][j] = distance[i - 1][j] + 1;
+// 			if (abs(j - 1 - i) <= threshold && distance[i][j] > distance[i][j - 1] + 1)
+// 				distance[i][j] = distance[i][j - 1] + 1;
 			
-			if (distance[i][j] < minDist)
-				minDist = distance[i][j];
+// 			if (distance[i][j] < minDist)
+// 				minDist = distance[i][j];
 
-		}
-		if (minDist > threshold)
-			return INT_MAX;
-	}
+// 		}
+// 		if (minDist > threshold)
+// 			return INT_MAX;
+// 	}
 
-    return distance[slen][tlen];	
+//     return distance[slen][tlen];	
+// }
+
+int levenshteinDist(string s, string t, int threshold) {
+    int slen = s.length();
+    int tlen = t.length();
+
+    // swap so the smaller string is t; this reduces the memory usage
+    // of our buffers
+    if (tlen > slen) {
+        swap(s, t);
+        swap(slen, tlen);
+    }
+    if (slen - tlen > threshold)
+        return INT_MAX;
+
+    // p is the previous and d is the current distance array; dtmp is used in swaps
+    vector<int> d(tlen + 1, 0);
+    vector<int> p(tlen + 1, 0);
+
+    // the values necessary for our threshold are written; the ones after
+    // must be filled with large integers since the tailing member of the threshold 
+    // window in the bottom array will run min across them
+    int n = 0;
+    for (; n < min(tlen+1, (int)threshold + 1); ++n)
+        p[n] = n;
+    for (int i = n; i < tlen + 1; i++)
+        p[i] = INT_MAX;
+    for (int i = 0; i < tlen + 1; i++)
+        d[i] = INT_MAX;
+
+    // this is the core of the Levenshtein edit distance algorithm
+    // instead of actually building the matrix, two arrays are swapped back and forth
+    // the threshold limits the amount of entries that need to be computed if we're 
+    // looking for a match within a set distance
+    for (int row = 1; row < slen+1; ++row) {
+        d[0] = row;
+
+        // set up our threshold window
+        int min_val = max(1, row - (int)threshold);
+        int max_val = min(tlen+1, row + (int)threshold + 1);
+
+        // since we're reusing arrays, we need to be sure to wipe the value left of the
+        // starting index; we don't have to worry about the value above the ending index
+        // as the arrays were initially filled with large integers and we progress to the right
+        if (min_val > 1)
+            d[min_val-1] = INT_MAX;
+        int minDist = INT_MAX;
+        for (int col = min_val; col < max_val; ++col) {
+            if (s[row-1] == t[col-1])
+                d[col] = p[col-1];
+            else
+                d[col] = min(p[col-1], min(d[col-1], p[col])) + 1;
+            minDist = min(minDist, d[col]);
+        }
+
+        if (minDist > threshold) {
+            return INT_MAX;
+        }
+        // swap our arrays
+        swap(p, d);
+    }
+    return p[tlen];
 }
 
 
@@ -410,14 +455,17 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
         unsigned ed = 0;
         unordered_set<unsigned>::iterator it1 = longResult.begin();
         while (it1 != longResult.end()) {
-            ed = getED(query, strings[*it1].c_str(), threshold);
+            // ed = getED(query, strings[*it1].c_str(), threshold);
+            ed = levenshteinDist(string(query), strings[*it1], threshold);
+
             if (ed <= threshold)
                 result.push_back(make_pair(*it1, ed));
             ++it1;
         }
         vector<unsigned>::iterator it2 = emptyID.begin();
         while (it2 != emptyID.end()) {
-            ed = getED(query, strings[*it2].c_str(), threshold);
+            // ed = getED(query, strings[*it2].c_str(), threshold);
+            ed = levenshteinDist(string(query), strings[*it2], threshold);
             if (ed <= threshold)
                 result.push_back(make_pair(*it2, ed));
             ++it2;
@@ -425,7 +473,8 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
         sort(result.begin(), result.end(), resultCompare);
     } else {
         for (int i = 0; i < (int)strings.size(); ++i) {
-            unsigned ed = getED(query, strings[i].c_str(), threshold);
+            // unsigned ed = getED(query, strings[i].c_str(), threshold);
+            unsigned ed = levenshteinDist(string(query), strings[i], threshold);
             if (ed <= threshold)
                 result.push_back(make_pair(i, ed));
         }

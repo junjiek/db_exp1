@@ -25,7 +25,7 @@ private:
     unordered_map<string, unsigned> gramIdMap;
 
     /* 'Temporal' variable */
-    vector<unsigned>                    startPos;       // start position of each list
+    vector<unsigned>                    headPos;       // start position of each list
     unordered_map<string, unsigned>     gramCount;      // handle repeated grams
     vector<unsigned>                    possibleList;   // store possible index in the sortGram.
     vector<unsigned>                    countID;        // countID[i]: appearance times of strings[i]
