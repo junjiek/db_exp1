@@ -228,9 +228,9 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 
 void SimSearcher::mergeOpt(unsigned start, unsigned end, unsigned th) {
 	longResult.clear();
-	/* MergeOpt */
+	// MergeOpt
 	for (unordered_set<unsigned>::iterator it(shortResult.begin()); it != shortResult.end(); ++it) {
-		/* For each 'long' lists */
+        // calculate times of appearance in the L long lists.
 		for (int i = start; i < (int)end; ++i) {
 			if (binary_search(sortGramList[possibleList[i]].begin(), sortGramList[possibleList[i]].end(), *it))
 				++countID[*it];
@@ -296,80 +296,45 @@ bool resultCompare(const pair<unsigned, unsigned>& a, const pair<unsigned, unsig
 }
 
 
-int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<unsigned, double> > &result) {
-	result.clear();
 
-	int Gq(max(0, int(strlen(query) - q + 1))), Gs(max(0, int(shortestStrLen - q + 1)));
-	int T = (int)max(threshold * Gq, (Gq + Gs) * threshold / (1 + threshold));
+int SimSearcher::searchJaccard(const char *query, double threshold,
+                                 vector<pair<unsigned, double> > &result) {
+    result.clear();
+    if (divideSkip(query, jaccardT(query, threshold))) {
+        // Check the candidates and 'empty'(very short) words
+        double jac = 0.0;
+        unordered_set<unsigned>::iterator it1 = longResult.begin();
+        while (it1 != longResult.end()) {
+            jac = getJac(query, strings[*it1].c_str());
+            if (jac >= threshold)
+                result.push_back(make_pair(*it1, jac));
+            ++it1;
+        }
+        vector<unsigned>::iterator it2 = emptyID.begin();
+        while (it2 != emptyID.end()) {
+            jac = getJac(query, strings[*it2].c_str());
+            if (jac >= threshold)
+                result.push_back(make_pair(*it2, jac));
+            ++it2;
+        }
+        sort(result.begin(), result.end(), resultCompare);  
+    } else {
+        double jac = 0.0;
+        for (int i = 0; i < (int)strings.size(); ++i) {
+            jac = getJac(query, strings[i].c_str());
+            if (jac >= threshold)
+                result.push_back(make_pair(i, jac));
+        }
+    }
+    return (result.empty()) ? FAILURE : SUCCESS;
+}
 
-	const double mu = 0.0085;
+int SimSearcher::jaccardT(const char* query, double threshold) {
+    int queryGramSize = max(0, (int)(strlen(query) - q + 1));
+    int minGramSize = max(0, (int)(shortestStrLen - q + 1));
+    return max(queryGramSize * threshold,
+              (queryGramSize + minGramSize) * threshold / (1 + threshold));
 
-	// T  = -1;
-	// cout << "T = " << T << endl;
-
-	/* Using DivideSkip algorithm */
-	if (T > 0) {
-		unsigned L = T / (mu * log10(double(maxLength)) + 1);		// important parameter in the DivideSkip algorithm
-
-		// cout << "L = " << L << endl;
-		unsigned len = strlen(query);
-		/* Parse the grams if the query string is long enough */
-		if (len > q && len >= 10) {
-			getQueryGramList(query);
-
-			int shortNum = possibleList.size() - int(L);
-
-			if (shortNum > 0) {
-				/* Use MergeSkip algorithm on L_short set, if not empty */	
-				mergeSkip(query, T - L, shortNum);
-				
-				/* Use MergeOpt algorithm on L_long set. */
-				mergeOpt(shortNum, possibleList.size(), L);
-				
-				/* Check the candidates and 'empty'(very short) words */
-				double jac(0.0);
-				for (unordered_set<unsigned>::iterator it(longResult.begin()); it != longResult.end(); ++it) {
-					jac = getJac(query, strings[*it].c_str());
-					if (jac >= threshold)
-						result.push_back(make_pair(*it,jac));
-				}
-				for (vector<unsigned>::iterator it(emptyID.begin()); it != emptyID.end(); ++it) {
-					jac = getJac(query, strings[*it].c_str());
-					if (jac >= threshold)
-						result.push_back(make_pair(*it, jac));
-				}
-				sort(result.begin(), result.end(), resultCompare);	
-			} 
-			else {
-				double jac(0.0);
-				for (int i = 0; i < (int)strings.size(); ++i) {
-					jac = getJac(query, strings[i].c_str());
-					if (jac >= threshold)
-						result.push_back(make_pair(i, jac));
-				}
-			}
-		}
-		/* The query word is too short: Just search */
-		else {
-			double jac(0.0);
-			for (int i = 0; i < (int)strings.size(); ++i) {
-				jac = getJac(query, strings[i].c_str());
-				if (jac >= threshold)
-					result.push_back(make_pair(i, jac));
-			}
-		}
-	} 
-	/* Just check it one by one */
-	else {
-		double jac(0.0);
-		for (int i = 0; i < (int)strings.size(); ++i) {
-			jac = getJac(query, strings[i].c_str());
-			if (jac >= threshold)
-				result.push_back(make_pair(i, jac));
-		}
-	}
-
-	return SUCCESS;
 }
 
 unsigned getED(const char *s, const char *t, int threshold) {
@@ -411,12 +376,6 @@ unsigned getED(const char *s, const char *t, int threshold) {
     return distance[slen][tlen];	
 }
 
-int SimSearcher::jaccardT(const char* query, double threshold) {
-    double queryGramSize = (double)strlen(query) - q + 1;
-    return max(queryGramSize * threshold,
-              (queryGramSize + shortestStrLen) * threshold / (1 + threshold));
-
-}
 
 int SimSearcher::edT(const char* query, unsigned threshold) {
     return strlen(query) - (int)q + 1 - (int)(threshold * q);
