@@ -32,7 +32,7 @@ void SimSearcher::generateGramJac(string &s, unsigned line_num) {
     int gramSize = 0;
     while(nend != -1) {
         gramSize ++;   
-        nend = s.find_first_of(" ", nbegin);   
+        nend = s.find(" ", nbegin);   
         if(nend == -1)
             sub = s.substr(nbegin, s.length()-nbegin);
         else  
@@ -68,8 +68,8 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     return (_map.empty() || _mapJac.empty()) ? FAILURE : SUCCESS;
 }
 
-void SimSearcher::getQueryGramList(string &query, vector<InvertedList *> &list,
-                                   map<int, int> &rawResult, int kind, int T) {
+void SimSearcher::getQueryGramListED(string &query, vector<InvertedList *> &list,
+                                     map<int, int> &rawResult) {
     unordered_map<string, int> m;
     // get the list of q-grams
     for (int i = 0; i < query.length() - _q + 1; ++ i) {
@@ -90,15 +90,20 @@ void SimSearcher::getQueryGramList(string &query, vector<InvertedList *> &list,
     }
 }
 
-void SimSearcher::scanCount(string &query, vector<InvertedList *> &list,
-                            map<int, int> &rawResult, int T) {
-    vector<int> counter(_str.size(), 0);
-
-    for (auto & i : list) {
-        for (auto & j : (*i).getList()) {
-            counter[j] ++;
-            if (counter[j] >= T)
-                rawResult[j] = counter[j];
+void SimSearcher::getQueryGramListJac(string &query, vector<InvertedList *> &list,
+                                      map<int, int> &rawResult) {
+    int nend = 0, nbegin = 0;
+    string sub = "";
+    while (nend != -1) {
+        nend = query.find(" ", nbegin);   
+        if(nend == -1)
+            sub = query.substr(nbegin, query.length()-nbegin);
+        else  
+            sub = query.substr(nbegin, nend-nbegin);
+        nbegin = nend + 1;
+        if (_mapJac.find(sub) != _mapJac.end()) {
+            // has appeared in the dataset
+            list.push_back(&_mapJac[sub].getList(0));
         }
     }
 }
@@ -185,49 +190,33 @@ void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
     }
 }
 
-void SimSearcher::filter(string &query, map<int, int> &rawResult,
-                               int kind, int T) {
+void SimSearcher::filterED(string &query, map<int, int> &rawResult, int T) {
     vector<InvertedList *> list;
     rawResult.clear();
     if (T != 0 && query.length() >= _q) {
-        getQueryGramList(query, list, rawResult, kind, T);
-        // scanCount(q uery, list, rawResult, T);
+        getQueryGramListED(query, list, rawResult);
         divideSkip(query, list, rawResult, T);
     } else {
         // when (T == 0 || query.length() < _q) calculate directly.
-
-        // initialize
         for (int i = 0; i < _str.size(); ++ i)
             rawResult[i] = 0;
+    }
+}
 
-        unordered_map<string, int> m;
-        // calculate the overlap
-        if (kind == JAC && query.length() >= _q) {
-            for (int i = 0; i <= query.length() - _q; ++ i) {
-                string sub = query.substr(i, _q);
-                if (m.find(sub) == m.end()) {
-                    if (_map.find(sub) != _map.end()) {
-                        m[sub] = 0;
-                        for (auto & j : _map[sub].getList(m[sub]).getList())
-                            rawResult[j] ++;
-                    }
-                }
-                else {
-                    ++ m[sub];
-                    if (m[sub] < _map[sub].size())
-                        for (auto & j : _map[sub].getList(m[sub]).getList())
-                            rawResult[j] ++;
-                }
-            }
-        }
+void SimSearcher::filterJac(string &query, map<int, int> &rawResult, int T) {
+    vector<InvertedList *> list;
+    rawResult.clear();
+    if (T != 0 && query.length() >= _q) {
+        getQueryGramListJac(query, list, rawResult);
+        divideSkip(query, list, rawResult, T);
+    } else {
+        // when (T == 0 || query.length() < _q) calculate directly.
+        for (int i = 0; i < _str.size(); ++ i)
+            rawResult[i] = 0;
     }
 }
 
 double SimSearcher::jaccardDist(string& a, string& b) {
-    // int len_a = a.length(), len_b = b.length();
-    // if (min(len_a, len_b) < _q)
-    //     return 0;
-    // return (double)T / (len_a + len_b - 2 * (_q - 1) - T);
     unordered_set<string> interSet;
     int interNum = 0;
 
@@ -235,8 +224,8 @@ double SimSearcher::jaccardDist(string& a, string& b) {
     string sub = "";
     int gramSizeA = 0;
     while (nend != -1) {
-        gramSizeA ++;   
-        nend = a.find_first_of(" ", nbegin);   
+        gramSizeA ++;
+        nend = a.find(" ", nbegin);   
         if(nend == -1)
             sub = a.substr(nbegin, a.length()-nbegin);
         else  
@@ -247,8 +236,8 @@ double SimSearcher::jaccardDist(string& a, string& b) {
     nend = nbegin = 0;
     int gramSizeB = 0;
     while (nend != -1) {
-        gramSizeB ++;   
-        nend = b.find_first_of(" ", nbegin);   
+        gramSizeB ++;
+        nend = b.find(" ", nbegin);   
         if(nend == -1)
             sub = b.substr(nbegin, b.length()-nbegin);
         else  
@@ -323,7 +312,13 @@ int SimSearcher::levenshteinDist(string s, string t, int threshold) {
 }
 
 int SimSearcher::jaccardT(string &query, double threshold) {
-    double queryGramSize = (double)query.length() - _q + 1;
+    int nend = 0, nbegin = 0;
+    int queryGramSize = 0;
+    while(nend != -1) {
+        queryGramSize ++;   
+        nend = query.find(" ", nbegin);   
+        nbegin = nend + 1;
+    }
     return max(queryGramSize * threshold,
               (queryGramSize + _minGramSize) * threshold / (1 + threshold));
 
@@ -341,7 +336,7 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
     //get the raw result
     string _query(query);
     map<int, int> rawResult;
-    filter(_query, rawResult, JAC, jaccardT(_query, threshold));
+    filterJac(_query, rawResult, jaccardT(_query, threshold));
 
     //eliminate false positive
     for (auto & i : rawResult) {
@@ -361,7 +356,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
     //get the raw result
     string _query(query);
     map<int, int> rawResult;
-    filter(_query, rawResult, ED, edT(_query, threshold));
+    filterED(_query, rawResult, edT(_query, threshold));
 
     //eliminate the false positives
     for (auto & i : rawResult) {

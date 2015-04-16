@@ -10,8 +10,8 @@
 const int SUCCESS = 0;
 const int FAILURE = 1;
 
-#define ED 1
-#define JAC 2
+// #define ED 1
+// #define JAC 2
 
 using namespace std;
 
@@ -33,13 +33,14 @@ public:
     int jaccardT(string &query, double threshold);
     int edT(string &query, unsigned threshold);
     //get the lists of grams for the query
-    void getQueryGramList(string &query, vector<InvertedList *> &list,
-                          map<int, int> &rawResult, int kind, int T);
-    void scanCount(string &query, vector<InvertedList *> &list,
-                   map<int, int> &rawResult, int T);
+    void getQueryGramListED(string &query, vector<InvertedList *> &list,
+                            map<int, int> &rawResult);
+    void getQueryGramListJac(string &query, vector<InvertedList *> &list,
+                             map<int, int> &rawResult);
     void divideSkip(string &query, vector<InvertedList *> &list,
                     map<int, int> &rawResult, int T);
-    void filter(string &query, map<int, int> &rawResult, int kind, int T);
+    void filterED(string &query, map<int, int> &rawResult, int T);
+    void filterJac(string &query, map<int, int> &rawResult, int T);
     int levenshteinDist(string s, string t, int threshold);
     double jaccardDist(string &a, string &b);
     int searchJaccard(const char *query, double threshold,
