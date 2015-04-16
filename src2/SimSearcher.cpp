@@ -37,7 +37,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 	// Create inverted-table
 	unordered_map<string, vector<unsigned>> originalGram;
 	vector<pair<string, vector<unsigned>>>	sortGramPair;
-	countGram.clear();
+	gramCount.clear();
 	originalGram.clear();
 	sortGramPair.clear();
 
@@ -54,25 +54,25 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 		}
 		// Push back into original gram
 		else {
-			countGram.clear();
+			gramCount.clear();
 			// Process same grams in one string
 			unsigned num;
 			for (int i = 0; i < (int)(len - q - 1); ++i) {
 				string gram(str.substr(i, q));
 				// First appearance
-				if (countGram.find(gram) == countGram.end()) {
+				if (gramCount.find(gram) == gramCount.end()) {
 					originalGram[gram].push_back(id);
-					countGram[gram] = 0;
+					gramCount[gram] = 0;
 				}
-				// Appears n > 1 times
+				// Appears > 1 times
 				else {
-					num = countGram[gram]++;
+					num = gramCount[gram]++;
 					ostringstream sout;
 					sout << gram << num;
                     // Concat gram with num to mark apperance times of the gram 
                     // in a record
 					originalGram[sout.str()].push_back(id);
-					countGram[sout.str()] = 0;
+					gramCount[sout.str()] = 0;
 				}
 			}
 		}
@@ -101,50 +101,52 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 	return SUCCESS;
 }
 
-void SimSearcher::doMakeGrams(const char* query) {
+void SimSearcher::getQueryGramList(const char* query) {
 	// Create the possible(initial) set of gram lists
 	possibleList.clear();			
-	countGram.clear();
+	gramCount.clear();
 	unsigned num  = 0;
 
 	string queryStr(query);
 
 	for (int i = 0; i < (int)(queryStr.length() - q - 1); ++i) {
 		string gram(queryStr.substr(i, q));
-
         // First appearance
-		if (countGram.find(gram) == countGram.end()) {
-			unordered_map<string, unsigned>::iterator findRes = gramIdMap.find(gram);
-			// This gram exists in the input file
+		if (gramCount.find(gram) == gramCount.end()) {
+			unordered_map<string, unsigned>::iterator findRes;
+            findRes = gramIdMap.find(gram);
+			// Appeared in the input file
 			if (findRes != gramIdMap.end())
 				possibleList.push_back(findRes->second);
-			countGram[gram] = 0;
+			gramCount[gram] = 0;
 		}
-        // Appears n > 1 times
+        // Appears > 1 times
 		else {
-			num = countGram[gram]++;
+			num = gramCount[gram]++;
 			ostringstream sout;
 			sout << gram << num;
-			unordered_map<string, unsigned>::iterator findRes = gramIdMap.find(sout.str());
-			/* This gram exists in the input file */
+			unordered_map<string, unsigned>::iterator findRes;
+            findRes = gramIdMap.find(sout.str());
+			// Appeared in the input file
 			if (findRes != gramIdMap.end())
 				possibleList.push_back(findRes->second);
-			countGram[sout.str()] = 0;
+			gramCount[sout.str()] = 0;
 		}
 	}
 	sort(possibleList.begin(), possibleList.end());
 }
 
-// Compare function for the heap (in MergeSkip algorithm )
+// Compare function for the heap (in MergeSkip)
 struct heapCompare {
 	bool operator() (const pair<unsigned, unsigned>& a, const pair<unsigned, unsigned>& b) {
 		return a.first > b.first;
 	}
 };
 
-void SimSearcher::doMergeSkip(const char *query, unsigned th, int shortNum) {
+void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum) {
 	// pair: <wordID, possible gram list ID>
-	priority_queue<pair<unsigned, unsigned>, vector<pair<unsigned, unsigned>>, heapCompare> heap;
+	priority_queue<pair<unsigned, unsigned>, vector<pair<unsigned, unsigned>>,
+                        heapCompare> heap;
 	poppedLists.clear();
 	shortResult.clear();
 
@@ -167,7 +169,7 @@ void SimSearcher::doMergeSkip(const char *query, unsigned th, int shortNum) {
 			poppedLists.push_back(heap.top());
 			heap.pop();
 		}
-		if (cnt >= th) {
+		if (cnt >= threshold) {
 			shortResult.insert(topVal);
 			countID[topVal] = cnt;
 			for (vector<pair<unsigned, unsigned>>::iterator it(poppedLists.begin()); it != poppedLists.end(); ++it) {
@@ -178,7 +180,7 @@ void SimSearcher::doMergeSkip(const char *query, unsigned th, int shortNum) {
 			}
 		}
 		else {
-			for (int i = 0; !heap.empty() && i < (int)(th - 1 - cnt); ++i) {
+			for (int i = 0; !heap.empty() && i < (int)(threshold - 1 - cnt); ++i) {
 				poppedLists.push_back(heap.top());
 				heap.pop();
 			}
@@ -222,7 +224,7 @@ void SimSearcher::doMergeSkip(const char *query, unsigned th, int shortNum) {
 */
 }
 
-void SimSearcher::doMergeOpt(unsigned start, unsigned end, unsigned th) {
+void SimSearcher::mergeOpt(unsigned start, unsigned end, unsigned th) {
 	longResult.clear();
 	/* MergeOpt */
 	for (unordered_set<unsigned>::iterator it(shortResult.begin()); it != shortResult.end(); ++it) {
@@ -240,44 +242,44 @@ double SimSearcher::getJac(const char *query, const char *word) {
 	unordered_set<string> interSet;
 	int interNum(0);
 
-	countGram.clear();
+	gramCount.clear();
 	/* Process same grams in one string */
 	unsigned num, lenQ(strlen(query)), lenW(strlen(word));
 	string strQ(query), strW(word);
 	for (int i = 0; i <= (int)(lenQ - q); ++i) {
 		string gram(strQ.substr(i, q));
 		/* Not found: first appearance */
-		if (countGram.find(gram) == countGram.end()) {
+		if (gramCount.find(gram) == gramCount.end()) {
 			interSet.insert(gram);
-			countGram[gram] = 0;
+			gramCount[gram] = 0;
 		}
 		/* Not first */
 		else {
-			num = countGram[gram]++;
+			num = gramCount[gram]++;
 			ostringstream sout;
 			sout << gram << num;
 			interSet.insert(sout.str());
-			countGram[sout.str()] = 0;
+			gramCount[sout.str()] = 0;
 		}
 	}
 
-	countGram.clear();
+	gramCount.clear();
 	for (int j = 0; j <= (int)(lenW - q); ++j) {
 		string gram(strW.substr(j, q));
 		/* Not found: first appearance */
-		if (countGram.find(gram) == countGram.end()) {
+		if (gramCount.find(gram) == gramCount.end()) {
 			if (interSet.find(gram) != interSet.end())
 				++interNum;
-			countGram[gram] = 0;
+			gramCount[gram] = 0;
 		}
 		/* Not first */
 		else {
-			num = countGram[gram]++;
+			num = gramCount[gram]++;
 			ostringstream sout;
 			sout << gram << num;
 			if (interSet.find(sout.str()) != interSet.end())
 				++interNum;
-			countGram[sout.str()] = 0;
+			gramCount[sout.str()] = 0;
 		}
 	}
 	
@@ -311,16 +313,16 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
 		unsigned len = strlen(query);
 		/* Parse the grams if the query string is long enough */
 		if (len > q && len >= 10) {
-			doMakeGrams(query);
+			getQueryGramList(query);
 
 			int shortNum = possibleList.size() - int(L);
 
 			if (shortNum > 0) {
 				/* Use MergeSkip algorithm on L_short set, if not empty */	
-				doMergeSkip(query, T - L, shortNum);
+				mergeSkip(query, T - L, shortNum);
 				
 				/* Use MergeOpt algorithm on L_long set. */
-				doMergeOpt(shortNum, possibleList.size(), L);
+				mergeOpt(shortNum, possibleList.size(), L);
 				
 				/* Check the candidates and 'empty'(very short) words */
 				double jac(0.0);
@@ -418,16 +420,26 @@ unsigned getED(const char *query, const char *word, int th) {
 	return ed;
 }
 
+int SimSearcher::jaccardT(const char* query, double threshold) {
+    double queryGramSize = (double)strlen(query) - q + 1;
+    return max(queryGramSize * threshold,
+              (queryGramSize + shortestStrLen) * threshold / (1 + threshold));
+
+}
+
+int SimSearcher::edT(const char* query, unsigned threshold) {
+    return strlen(query) - (int)q + 1 - (int)(threshold * q);
+}
+
+void filter
+
 int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<unsigned, unsigned> > &result) {
 	result.clear();
-	/* T-occurrence threshold */
+	// T-occurrence threshold
 	int T = strlen(query) - q + 1 - threshold * q;
 	const double mu = 0.0085;
 
-	// T  = -1;
-	// cout << "T = " << T;
-
-	/* Using DivideSkip algorithm */
+	// DivideSkip algorithm
 	if (T > 0) {
 		unsigned L = T / (mu * log10(double(maxLength)) + 1);		// important parameter in the DivideSkip algorithm
 
@@ -435,16 +447,16 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 		unsigned len = strlen(query);
 		/* Parse the grams if the query string is long enough */
 		if (len > q && len >= 5) {
-			doMakeGrams(query);
+			getQueryGramList(query);
 
 			int shortNum = possibleList.size() - int(L);
 
 			if (shortNum > 0) {
 				/* Use MergeSkip algorithm on L_short set, if not empty */	
-				doMergeSkip(query, T - L, shortNum);
+				mergeSkip(query, T - L, shortNum);
 				
 				/* Use MergeOpt algorithm on L_long set. */
-				doMergeOpt(shortNum, possibleList.size(), T);
+				mergeOpt(shortNum, possibleList.size(), T);
 				
 				/* Check the candidates and 'empty'(very short) words */
 				unsigned ed = 0;
@@ -460,8 +472,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 					}
 				}
 				sort(result.begin(), result.end(), resultCompare);
-			} 
-			else {
+			} else {
 				for (int i = 0; i < (int)strings.size(); ++i) {
 					unsigned ed = getED(query, strings[i].c_str(), threshold);
 					if (ed <= threshold)

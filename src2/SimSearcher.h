@@ -26,18 +26,21 @@ private:
 
     /* 'Temporal' variable */
     vector<unsigned>                    startPos;       // start position of each list
-    unordered_map<string, unsigned>     countGram;      // handle repeated grams
+    unordered_map<string, unsigned>     gramCount;      // handle repeated grams
     vector<unsigned>                    possibleList;   // store possible index in the sortGram.
     vector<unsigned>                    countID;        // countID[i]: appearance times of strings[i]
     unordered_set<unsigned>             shortResult;    // candidate from the 'short' part (id)
     unordered_set<unsigned>             longResult;     // candidate from the 'long' part (id)
 
     vector<pair<unsigned, unsigned>>    poppedLists;    // pair: <wordID, sorted gram list ID>
+    // calcultate T to filter the impossible ones
+    int jaccardT(const char* query, double threshold);
+    int edT(const char* query, unsigned threshold);
 
     double getJac(const char *query, const char *word);
-    void doMakeGrams(const char *query);
-    void doMergeSkip(const char *query, unsigned th, int shortNum);
-    void doMergeOpt(unsigned start, unsigned end, unsigned th);
+    void getQueryGramList(const char *query);
+    void mergeSkip(const char *query, unsigned threshold, int shortNum);
+    void mergeOpt(unsigned start, unsigned end, unsigned threshold);
 
 public:
     SimSearcher() ;
