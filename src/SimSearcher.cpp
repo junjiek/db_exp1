@@ -11,10 +11,10 @@
 
 using namespace std;
 
-void SimSearcher::generateGram(string &s, unsigned line_num) {
+void SimSearcher::generateGramED(string &s, unsigned line_num) {
     if (s.length() < _q)
         return;
-    _minGramSize = min(_minGramSize, (unsigned)s.length() - _q + 1);
+    // _minGramSize = min(_minGramSize, (unsigned)s.length() - _q + 1);
     for (int i = 0; i < s.length() - _q + 1; ++ i) {
         string sub = s.substr(i, _q);
         if (_map.find(sub) == _map.end()) {
@@ -25,6 +25,26 @@ void SimSearcher::generateGram(string &s, unsigned line_num) {
     }
 }
 
+void SimSearcher::generateGramJac(string &s, unsigned line_num) {
+
+    int nend = 0;   
+    int nbegin = 0;
+    string sub = "";
+    while(nend != -1) {   
+        nend = s.find_first_of(" ", nbegin);   
+        if(nend == -1)
+            sub = s.substr(nbegin, s.length()-nbegin);
+        else  
+            sub = s.substr(nbegin, nend-nbegin);
+        nbegin = nend + 1;
+        if (_mapJac.find(sub) == _mapJac.end()) {
+            Gram g(sub);
+            _mapJac[sub] = g;
+        };
+        _mapJac[sub].insert(line_num);
+    }
+}
+
 int SimSearcher::createIndex(const char *filename, unsigned q) {
     // generate q-grams
     ifstream fin(filename);
@@ -32,15 +52,17 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     _str.clear();
     setQ(q);
     while (getline(fin, str)) {
-        generateGram(str, _str.size());
+        generateGramED(str, _str.size());
+        generateGramJac(str, _str.size());
         _str.push_back(str);
     };
 
     // sort the grams' lists
     for (auto & i : _map)
         i.second.sort();
-
-    return (_map.empty()) ? FAILURE : SUCCESS;
+    for (auto & i : _mapJac)
+        i.second.sort();
+    return (_map.empty() || _mapJac.empty()) ? FAILURE : SUCCESS;
 }
 
 void SimSearcher::getQueryGramList(string &query, vector<InvertedList *> &list,

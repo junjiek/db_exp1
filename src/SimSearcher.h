@@ -20,7 +20,9 @@ private:
     vector<string> _str;
     unsigned _q, _minGramSize;
     unordered_map<string, Gram> _map;
-    void generateGram(string &s, unsigned line_num);
+    unordered_map<string, Gram> _mapJac;
+    void generateGramED(string &s, unsigned line_num);
+    void generateGramJac(string &s, unsigned line_num);
 public:
     SimSearcher() { _minGramSize = INT_MAX; }
     ~SimSearcher() {}
