@@ -96,6 +96,10 @@ void SimSearcher::getQueryGramListJac(string &query, vector<InvertedList *> &lis
     }
 }
 
+bool list_Compare(const InvertedList *a, const InvertedList *b) {
+    return (a->size() < b->size());
+};
+
 class Pair_Compare {
 public:
     bool operator() (
@@ -108,7 +112,7 @@ public:
 void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
                              map<int, int> &rawResult, int T) {
     //sort q-grams by length in the descending order
-    sort(list.begin(), list.end());
+    sort(list.begin(), list.end(), list_Compare);
 
     //get the L longest lists
     int L = min((double(T)) / (U * log((double)(*(list.back())).size()) + 1),
