@@ -4,6 +4,7 @@
 #include <cstring>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <climits>
 #include "Gram.h"
 
@@ -22,8 +23,12 @@ private:
     int _minGramSize;
     unordered_map<string, Gram> _map;
     unordered_map<string, Gram> _mapJac;
+    unordered_set<string> querySubStr;
+
     void generateGramED(string &s, unsigned line_num);
     void generateGramJac(string &s, unsigned line_num);
+    void generateQuerySubStr(string query);
+
 public:
     SimSearcher() { _minGramSize = INT_MAX; }
     ~SimSearcher() {}
@@ -33,16 +38,14 @@ public:
     int jaccardT(string &query, double threshold);
     int edT(string &query, unsigned threshold);
     //get the lists of grams for the query
-    void getQueryGramListED(string &query, vector<InvertedList *> &list,
-                            map<int, int> &rawResult);
-    void getQueryGramListJac(string &query, vector<InvertedList *> &list,
-                             map<int, int> &rawResult);
+    void getQueryGramListED(string &query, vector<InvertedList *> &list);
+    void getQueryGramListJac(string &query, vector<InvertedList *> &list);
     void divideSkip(string &query, vector<InvertedList *> &list,
                     map<int, int> &rawResult, int T);
     void filterED(string &query, map<int, int> &rawResult, int T);
     void filterJac(string &query, map<int, int> &rawResult, int T);
     int levenshteinDist(string s, string t, int threshold);
-    double jaccardDist(string &a, string &b);
+    double jaccardDist(string &w);
     int searchJaccard(const char *query, double threshold,
                       std::vector<std::pair<unsigned, double> > &result);
     int searchED(const char *query, unsigned threshold,

@@ -5,7 +5,6 @@
 #include <iostream>
 #include <cassert>
 #include <climits>
-#include <unordered_set>
 #include "InvertedList.h"
 #define U 0.0085
 
@@ -25,13 +24,12 @@ void SimSearcher::generateGramED(string &s, unsigned line_num) {
 }
 
 void SimSearcher::generateGramJac(string &s, unsigned line_num) {
+    unordered_set<string> subStr;
 
     int nend = 0;   
     int nbegin = 0;
     string sub = "";
-    int gramSize = 0;
     while(nend != -1) {
-        gramSize ++;   
         nend = s.find(" ", nbegin);   
         if(nend == -1)
             sub = s.substr(nbegin, s.length()-nbegin);
@@ -43,8 +41,9 @@ void SimSearcher::generateGramJac(string &s, unsigned line_num) {
             _mapJac[sub] = g;
         };
         _mapJac[sub].insert(line_num);
+        subStr.insert(sub);
     }
-    _minGramSize = min(_minGramSize, gramSize);
+    _minGramSize = min(_minGramSize, (int)subStr.size());
 
 }
 
@@ -68,8 +67,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     return (_map.empty() || _mapJac.empty()) ? FAILURE : SUCCESS;
 }
 
-void SimSearcher::getQueryGramListED(string &query, vector<InvertedList *> &list,
-                                     map<int, int> &rawResult) {
+void SimSearcher::getQueryGramListED(string &query, vector<InvertedList *> &list) {
     unordered_map<string, int> m;
     // get the list of q-grams
     for (int i = 0; i < query.length() - _q + 1; ++ i) {
@@ -90,17 +88,8 @@ void SimSearcher::getQueryGramListED(string &query, vector<InvertedList *> &list
     }
 }
 
-void SimSearcher::getQueryGramListJac(string &query, vector<InvertedList *> &list,
-                                      map<int, int> &rawResult) {
-    int nend = 0, nbegin = 0;
-    string sub = "";
-    while (nend != -1) {
-        nend = query.find(" ", nbegin);   
-        if(nend == -1)
-            sub = query.substr(nbegin, query.length()-nbegin);
-        else  
-            sub = query.substr(nbegin, nend-nbegin);
-        nbegin = nend + 1;
+void SimSearcher::getQueryGramListJac(string &query, vector<InvertedList *> &list) {
+    for (auto & sub : querySubStr) {
         if (_mapJac.find(sub) != _mapJac.end()) {
             // has appeared in the dataset
             list.push_back(&_mapJac[sub].getList(0));
@@ -194,7 +183,7 @@ void SimSearcher::filterED(string &query, map<int, int> &rawResult, int T) {
     vector<InvertedList *> list;
     rawResult.clear();
     if (T != 0 && query.length() >= _q) {
-        getQueryGramListED(query, list, rawResult);
+        getQueryGramListED(query, list);
         divideSkip(query, list, rawResult, T);
     } else {
         // when (T == 0 || query.length() < _q) calculate directly.
@@ -207,7 +196,7 @@ void SimSearcher::filterJac(string &query, map<int, int> &rawResult, int T) {
     vector<InvertedList *> list;
     rawResult.clear();
     if (T != 0 && query.length() >= _q) {
-        getQueryGramListJac(query, list, rawResult);
+        getQueryGramListJac(query, list);
         divideSkip(query, list, rawResult, T);
     } else {
         // when (T == 0 || query.length() < _q) calculate directly.
@@ -216,37 +205,28 @@ void SimSearcher::filterJac(string &query, map<int, int> &rawResult, int T) {
     }
 }
 
-double SimSearcher::jaccardDist(string& a, string& b) {
-    unordered_set<string> interSet;
-    int interNum = 0;
+double SimSearcher::jaccardDist(string& w) {
+    unordered_set<string> wordSubStr;
 
     int nend = 0, nbegin = 0;
-    string sub = "";
-    int gramSizeA = 0;
     while (nend != -1) {
-        gramSizeA ++;
-        nend = a.find(" ", nbegin);   
+        nend = w.find(" ", nbegin);   
+        string sub = "";
         if(nend == -1)
-            sub = a.substr(nbegin, a.length()-nbegin);
+            sub = w.substr(nbegin, w.length()-nbegin);
         else  
-            sub = a.substr(nbegin, nend-nbegin);
+            sub = w.substr(nbegin, nend-nbegin);
+        wordSubStr.insert(sub);
         nbegin = nend + 1;
-        interSet.insert(sub);
     }
-    nend = nbegin = 0;
-    int gramSizeB = 0;
-    while (nend != -1) {
-        gramSizeB ++;
-        nend = b.find(" ", nbegin);   
-        if(nend == -1)
-            sub = b.substr(nbegin, b.length()-nbegin);
-        else  
-            sub = b.substr(nbegin, nend-nbegin);
-        nbegin = nend + 1;
-        if (interSet.find(sub) != interSet.end())
-            ++interNum;
+
+    int interNum = 0;
+    for (auto & sub: querySubStr) {
+        if (wordSubStr.find(sub) != wordSubStr.end())
+            interNum ++;
     }
-    return double(interNum) / (gramSizeA + gramSizeB - interNum);
+
+    return double(interNum) / (querySubStr.size()+wordSubStr.size()-interNum);
 }
 
 int SimSearcher::levenshteinDist(string s, string t, int threshold) {
@@ -328,11 +308,26 @@ int SimSearcher::edT(string &query, unsigned threshold) {
     return max(0, (int)query.length() - (int)_q + 1 - (int)(threshold * _q));
 }
 
+void SimSearcher::generateQuerySubStr(string query) {
+    querySubStr.clear();
+    int nend = 0, nbegin = 0;
+    while (nend != -1) {
+        nend = query.find(" ", nbegin);   
+        string sub = "";
+        if (nend == -1)
+            sub = query.substr(nbegin, query.length() - nbegin);
+        else
+            sub = query.substr(nbegin, nend-nbegin);
+       querySubStr.insert(sub);
+       nbegin = nend + 1;
+    }
+}
+
 //search the similar string in terms of Jaccard
 int SimSearcher::searchJaccard(const char *query, double threshold,
                                vector<pair<unsigned, double>> &result) {
     result.clear();
-
+    generateQuerySubStr(string(query));
     //get the raw result
     string _query(query);
     map<int, int> rawResult;
@@ -340,12 +335,12 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
 
     //eliminate false positive
     for (auto & i : rawResult) {
-        double dis = jaccardDist(_query, _str[i.first]);
+        double dis = jaccardDist(_str[i.first]);
         if (dis >= threshold)
             result.push_back(make_pair(i.first, dis));
     }
 
-    return (result.empty()) ? FAILURE : SUCCESS;
+    return SUCCESS;
 }
 
 //search the similar string in terms of ED
@@ -365,5 +360,5 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
             result.push_back(make_pair(i.first, dis));
     }
 
-    return (result.empty()) ? FAILURE : SUCCESS;
+    return SUCCESS;
 }
