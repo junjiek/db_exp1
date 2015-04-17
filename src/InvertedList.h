@@ -20,6 +20,13 @@ public:
     int size() const { return _list.size(); }
     void insert(unsigned index);
     bool hasKey(int key);
+    bool operator < (const InvertedList& l) const {
+        return this->size() < l.size();
+    }
+    bool operator > (const InvertedList& l) const {
+        return this->size() > l.size();
+    }
+
     // for debug
     void print() {
         cout << "  ";
