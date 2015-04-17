@@ -122,20 +122,20 @@ void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
     //initialize the priority queue
     priority_queue<pair<vector<int>::iterator, vector<int>::iterator>,
                    vector<pair<vector<int>::iterator, vector<int>::iterator>>,
-                   Pair_Compare> pq;
+                   Pair_Compare> heap;
     for (auto & i : list)
-        pq.push(make_pair(i->getList().begin(), i->getList().end()));
+        heap.push(make_pair(i->getList().begin(), i->getList().end()));
 
     //use MergeSkip to find ids that appear >= (T - L) times in the short lists
-    while(pq.size() >= T - L) {
+    while(heap.size() >= T - L) {
         vector<pair<vector<int>::iterator, vector<int>::iterator> > t;
-        t.push_back(pq.top());
-        pq.pop();
+        t.push_back(heap.top());
+        heap.pop();
 
-        while(!pq.empty()) {
-            if (*(pq.top().first) == *(t[0].first)) {
-                t.push_back(pq.top());
-                pq.pop();
+        while(!heap.empty()) {
+            if (*(heap.top().first) == *(t[0].first)) {
+                t.push_back(heap.top());
+                heap.pop();
             } else 
                 break;
         }
@@ -154,21 +154,21 @@ void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
             // push next record on each popped list to the priority queue.
             for (auto & i : t)
                 if ((i.first + 1) != i.second)
-                    pq.push(make_pair(i.first + 1, i.second));
-        } else if (pq.size() >= (T - L - appearance)) {
+                    heap.push(make_pair(i.first + 1, i.second));
+        } else if (heap.size() >= (T - L - appearance)) {
             // pop another (T-L-1-appearance) smallest records from the priority queue.
             for (int i = 0; i < T - L - 1 - appearance; ++ i) {
-                t.push_back(pq.top());
-                pq.pop();
+                t.push_back(heap.top());
+                heap.pop();
             }
 
             // for the total T-L-1 popped lists, jump to the smallest record whose 
-            // value >= the value of the top of pq
+            // value >= the value of the top of heap
             for (auto & i : t) {
                 vector<int>::iterator iter =
-                    lower_bound(i.first, i.second, *(pq.top().first));
+                    lower_bound(i.first, i.second, *(heap.top().first));
                 if (iter != i.second)
-                    pq.push(make_pair(iter, i.second));
+                    heap.push(make_pair(iter, i.second));
             }
         }
     }
