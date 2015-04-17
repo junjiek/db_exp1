@@ -32,6 +32,11 @@ bool gramCompare(const pair<string, vector<unsigned>>& a, const pair<string, vec
 	return a.second.size() < b.second.size();
 }
 
+bool gramlistCmp(const Gram& a, const Gram& b) {
+    return (a.size() < b.size());
+};
+
+
 int SimSearcher::createIndex(const char *filename, unsigned q) {
     ifstream fin(filename);
     this->q = q;
@@ -86,7 +91,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     }
     fin.close();
     countID.resize(strings.size());
-    sort(sortGramList.begin(), sortGramList.end());
+    sort(sortGramList.begin(), sortGramList.end(), gramlistCmp);
     for (int i = 0; i < (int)sortGramList.size(); i++) {
         gramIdMap[sortGramList[i].getGramStr()] = i;
     }

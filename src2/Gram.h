@@ -20,12 +20,6 @@ public:
     string getGramStr() { return gram; }
     vector<unsigned> & getList() { return list; }
     unsigned size() const { return list.size(); }
-    bool operator < (const Gram& obj) const {
-        return this->size() < obj.size();
-    }
-    bool operator > (const Gram& obj) const {
-        return this->size() > obj.size();
-    }
     void print();
 };
 
