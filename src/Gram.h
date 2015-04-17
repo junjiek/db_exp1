@@ -21,6 +21,7 @@ public:
 	int size() { return _list.size(); }
 	void sort();
 	void insert(unsigned index);
+	void insertJac(unsigned index);
 	// for debug
 	void print() {
 		cout << "+ " << _str << ": " << endl;

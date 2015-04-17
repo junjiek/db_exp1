@@ -24,8 +24,8 @@ void SimSearcher::generateGramED(string &s, unsigned line_num) {
 }
 
 void SimSearcher::generateGramJac(string &s, unsigned line_num) {
+    if (s.length() == 0) return;
     unordered_set<string> subStr;
-
     int nend = 0;   
     int nbegin = 0;
     string sub = "";
@@ -40,10 +40,10 @@ void SimSearcher::generateGramJac(string &s, unsigned line_num) {
             Gram g(sub);
             _mapJac[sub] = g;
         };
-        _mapJac[sub].insert(line_num);
+        _mapJac[sub].insertJac(line_num);
         subStr.insert(sub);
     }
-    _minGramSize = min(_minGramSize, (int)subStr.size());
+    _minSubStrSize = min(_minSubStrSize, (int)subStr.size());
 
 }
 
@@ -292,15 +292,8 @@ int SimSearcher::levenshteinDist(string s, string t, int threshold) {
 }
 
 int SimSearcher::jaccardT(string &query, double threshold) {
-    int nend = 0, nbegin = 0;
-    int queryGramSize = 0;
-    while(nend != -1) {
-        queryGramSize ++;   
-        nend = query.find(" ", nbegin);   
-        nbegin = nend + 1;
-    }
-    return max(queryGramSize * threshold,
-              (queryGramSize + _minGramSize) * threshold / (1 + threshold));
+    return max(querySubStr.size() * threshold,
+              (querySubStr.size() + _minSubStrSize) * threshold / (1 + threshold));
 
 }
 
@@ -328,6 +321,7 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
                                vector<pair<unsigned, double>> &result) {
     result.clear();
     generateQuerySubStr(string(query));
+
     //get the raw result
     string _query(query);
     map<int, int> rawResult;

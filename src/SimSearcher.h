@@ -20,7 +20,7 @@ class SimSearcher {
 private:
     vector<string> _str;
     unsigned _q;
-    int _minGramSize;
+    int _minSubStrSize;
     unordered_map<string, Gram> _map;
     unordered_map<string, Gram> _mapJac;
     unordered_set<string> querySubStr;
@@ -30,7 +30,7 @@ private:
     void generateQuerySubStr(string query);
 
 public:
-    SimSearcher() { _minGramSize = INT_MAX; }
+    SimSearcher() { _minSubStrSize = INT_MAX; }
     ~SimSearcher() {}
     void setQ(int q) { _q = q; }
     int createIndex(const char *filename, unsigned q);

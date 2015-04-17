@@ -15,6 +15,17 @@ void Gram::insert(unsigned index) {
     _list.push_back(l);
 }
 
+void Gram::insertJac(unsigned index) {
+    if (_list.empty()) {
+        InvertedList l;
+        l.insert(index);
+        _list.push_back(l);
+        return;
+    }
+    if (!_list[0].hasKey(index))
+        _list[0].insert(index);
+}
+
 void Gram::sort() {
     for(auto & i : _list) {
         i.sort();

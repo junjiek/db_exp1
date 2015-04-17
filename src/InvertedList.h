@@ -2,7 +2,7 @@
 #define INVERTEDLIST_H
 
 #include <vector>
-#include <unordered_map>
+#include <unordered_set>
 #include <algorithm>
 #include <iostream>
 
@@ -11,7 +11,7 @@ using namespace std;
 class InvertedList {
 private:
     vector<int> _list;
-    unordered_map<int, bool> _map;
+    unordered_set<int> _set;
 public:
     InvertedList() {};
     ~InvertedList() {};
