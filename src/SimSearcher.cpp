@@ -11,15 +11,15 @@
 using namespace std;
 
 void SimSearcher::generateGramED(string &s, unsigned line_num) {
-    if (s.length() < _q)
+    if (s.length() < q)
         return;
-    for (int i = 0; i < s.length() - _q + 1; ++ i) {
-        string sub = s.substr(i, _q);
-        if (_map.find(sub) == _map.end()) {
+    for (int i = 0; i < s.length() - q + 1; ++ i) {
+        string sub = s.substr(i, q);
+        if (gramMapED.find(sub) == gramMapED.end()) {
             Gram g(sub);
-            _map[sub] = g;
+            gramMapED[sub] = g;
         };
-        _map[sub].insert(line_num);
+        gramMapED[sub].insert(line_num);
     }
 }
 
@@ -36,63 +36,62 @@ void SimSearcher::generateGramJac(string &s, unsigned line_num) {
         else  
             sub = s.substr(nbegin, nend-nbegin);
         nbegin = nend + 1;
-        if (_mapJac.find(sub) == _mapJac.end()) {
+        if (gramMapJac.find(sub) == gramMapJac.end()) {
             Gram g(sub);
-            _mapJac[sub] = g;
+            gramMapJac[sub] = g;
         };
-        _mapJac[sub].insertJac(line_num);
+        gramMapJac[sub].insertJac(line_num);
         subStr.insert(sub);
     }
-    _minSubStrSize = min(_minSubStrSize, (int)subStr.size());
-
+    minSubStrSize = min(minSubStrSize, (int)subStr.size());
 }
 
 int SimSearcher::createIndex(const char *filename, unsigned q) {
     // generate q-grams
     ifstream fin(filename);
     string str;
-    _str.clear();
+    words.clear();
     setQ(q);
     while (getline(fin, str)) {
-        generateGramED(str, _str.size());
-        generateGramJac(str, _str.size());
-        _str.push_back(str);
+        generateGramED(str, words.size());
+        generateGramJac(str, words.size());
+        words.push_back(str);
     };
 
     // sort the grams' lists
-    for (auto & i : _map)
+    for (auto & i : gramMapED)
         i.second.sort();
-    for (auto & i : _mapJac)
+    for (auto & i : gramMapJac)
         i.second.sort();
-    return (_map.empty() || _mapJac.empty()) ? FAILURE : SUCCESS;
+    return (gramMapED.empty() || gramMapJac.empty()) ? FAILURE : SUCCESS;
 }
 
 void SimSearcher::getQueryGramListED(string &query, vector<InvertedList *> &list) {
     unordered_map<string, int> m;
     // get the list of q-grams
-    for (int i = 0; i < query.length() - _q + 1; ++ i) {
-        string sub = query.substr(i, _q);
+    for (int i = 0; i < query.length() - q + 1; ++ i) {
+        string sub = query.substr(i, q);
         if (m.find(sub) == m.end()) {
             // first-time appearance in the query grams 
-            if (_map.find(sub) != _map.end()) {
+            if (gramMapED.find(sub) != gramMapED.end()) {
                 // has appeared in the dataset
                 m[sub] = 0;
-                list.push_back(&_map[sub].getList(m[sub]));
+                list.push_back(&gramMapED[sub].getList(m[sub]));
             }
         }
         else {
             ++ m[sub];
-            if (m[sub] < _map[sub].size())
-                list.push_back(&_map[sub].getList(m[sub]));
+            if (m[sub] < gramMapED[sub].size())
+                list.push_back(&gramMapED[sub].getList(m[sub]));
         }
     }
 }
 
 void SimSearcher::getQueryGramListJac(string &query, vector<InvertedList *> &list) {
     for (auto & sub : querySubStr) {
-        if (_mapJac.find(sub) != _mapJac.end()) {
+        if (gramMapJac.find(sub) != gramMapJac.end()) {
             // has appeared in the dataset
-            list.push_back(&_mapJac[sub].getList(0));
+            list.push_back(&gramMapJac[sub].getList(0));
         }
     }
 }
@@ -182,12 +181,12 @@ void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
 void SimSearcher::filterED(string &query, map<int, int> &rawResult, int T) {
     vector<InvertedList *> list;
     rawResult.clear();
-    if (T != 0 && query.length() >= _q) {
+    if (T != 0 && query.length() >= q) {
         getQueryGramListED(query, list);
         divideSkip(query, list, rawResult, T);
     } else {
-        // when (T == 0 || query.length() < _q) calculate directly.
-        for (int i = 0; i < _str.size(); ++ i)
+        // when (T == 0 || query.length() < q) calculate directly.
+        for (int i = 0; i < words.size(); ++ i)
             rawResult[i] = 0;
     }
 }
@@ -195,12 +194,12 @@ void SimSearcher::filterED(string &query, map<int, int> &rawResult, int T) {
 void SimSearcher::filterJac(string &query, map<int, int> &rawResult, int T) {
     vector<InvertedList *> list;
     rawResult.clear();
-    if (T != 0 && query.length() >= _q) {
+    if (T != 0 && query.length() >= q) {
         getQueryGramListJac(query, list);
         divideSkip(query, list, rawResult, T);
     } else {
-        // when (T == 0 || query.length() < _q) calculate directly.
-        for (int i = 0; i < _str.size(); ++ i)
+        // when (T == 0 || query.length() < q) calculate directly.
+        for (int i = 0; i < words.size(); ++ i)
             rawResult[i] = 0;
     }
 }
@@ -291,14 +290,14 @@ int SimSearcher::levenshteinDist(string s, string t, int threshold) {
     return p[tlen];
 }
 
-int SimSearcher::jaccardT(string &query, double threshold) {
+int SimSearcher::jaccardT(double threshold) {
     return max(querySubStr.size() * threshold,
-              (querySubStr.size() + _minSubStrSize) * threshold / (1 + threshold));
+              (querySubStr.size() + minSubStrSize) * threshold / (1 + threshold));
 
 }
 
 int SimSearcher::edT(string &query, unsigned threshold) {
-    return max(0, (int)query.length() - (int)_q + 1 - (int)(threshold * _q));
+    return max(0, (int)query.length() - (int)q + 1 - (int)(threshold * q));
 }
 
 void SimSearcher::generateQuerySubStr(string query) {
@@ -323,13 +322,13 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
     generateQuerySubStr(string(query));
 
     //get the raw result
-    string _query(query);
+    string queryStr(query);
     map<int, int> rawResult;
-    filterJac(_query, rawResult, jaccardT(_query, threshold));
+    filterJac(queryStr, rawResult, jaccardT(threshold));
 
     //eliminate false positive
     for (auto & i : rawResult) {
-        double dis = jaccardDist(_str[i.first]);
+        double dis = jaccardDist(words[i.first]);
         if (dis >= threshold)
             result.push_back(make_pair(i.first, dis));
     }
@@ -343,13 +342,13 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
     result.clear();
 
     //get the raw result
-    string _query(query);
+    string queryStr(query);
     map<int, int> rawResult;
-    filterED(_query, rawResult, edT(_query, threshold));
+    filterED(queryStr, rawResult, edT(queryStr, threshold));
 
     //eliminate the false positives
     for (auto & i : rawResult) {
-        unsigned dis = levenshteinDist(_str[i.first], _query, threshold);
+        unsigned dis = levenshteinDist(words[i.first], query, threshold);
         if (dis <= threshold)
             result.push_back(make_pair(i.first, dis));
     }
