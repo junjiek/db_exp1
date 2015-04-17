@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <queue>
+#include "Gram.h"
 
 const int SUCCESS = 0;
 const int FAILURE = 1;
@@ -21,7 +22,7 @@ private:
     vector<unsigned> emptyID;
     vector<string>  strings;
 
-    vector<vector<unsigned>>        sortGramList;
+    vector<Gram> sortGramList;
     unordered_map<string, unsigned> gramIdMap;
 
     /* 'Temporal' variable */

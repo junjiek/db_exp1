@@ -33,74 +33,66 @@ bool gramCompare(const pair<string, vector<unsigned>>& a, const pair<string, vec
 }
 
 int SimSearcher::createIndex(const char *filename, unsigned q) {
-	ifstream fin(filename);
-	this->q = q;
+    ifstream fin(filename);
+    this->q = q;
 
-	// Create inverted-table
-	unordered_map<string, vector<unsigned>> originalGram;
-	vector<pair<string, vector<unsigned>>>	sortGramPair;
-	gramCount.clear();
-	originalGram.clear();
-	sortGramPair.clear();
+    // Create inverted-table
+    gramCount.clear();
+    gramIdMap.clear();
+    sortGramList.clear();
 
-	string str;
-	while (getline(fin, str)) {
-		unsigned id = strings.size();
-		strings.push_back(str);
-		unsigned len = str.length();
-		if (len < shortestStrLen)
-			shortestStrLen = len;
-		// Too short: seems empty
-		if (len < q) {
-			emptyID.push_back(id);
-		}
-		// Push back into original gram
-		else {
-			gramCount.clear();
-			// Process same grams in one string
-			unsigned num;
-			for (int i = 0; i < (int)(len - q + 1); ++i) {
-				string gram(str.substr(i, q));
-				// First appearance
-				if (gramCount.find(gram) == gramCount.end()) {
-					originalGram[gram].push_back(id);
-					gramCount[gram] = 0;
-				}
-				// Appears > 1 times
-				else {
-					num = gramCount[gram]++;
-					ostringstream sout;
-					sout << gram << num;
+    string str;
+    while (getline(fin, str)) {
+        unsigned id = strings.size();
+        strings.push_back(str);
+        unsigned len = str.length();
+        if (len < shortestStrLen)
+            shortestStrLen = len;
+        // Too short: seems empty
+        if (len < q) {
+            emptyID.push_back(id);
+        }
+        // Push back into original gram
+        else {
+            gramCount.clear();
+            // Process same grams in one string
+            unsigned num;
+            for (int i = 0; i < (int)(len - q + 1); ++i) {
+                string gram(str.substr(i, q));
+                // First appearance
+                if (gramCount.find(gram) == gramCount.end()) {
+                    gramCount[gram] = 0;
+                }
+                // Appears > 1 times
+                else {
+                    num = gramCount[gram]++;
+                    ostringstream sout;
+                    sout << gram << num;
                     // Concat gram with num to mark apperance times of the gram 
                     // in a record
-					originalGram[sout.str()].push_back(id);
-					gramCount[sout.str()] = 0;
-				}
-			}
-		}
-	}
-	fin.close();
-	countID.resize(strings.size());
-
-	// Sort the originalGram by the length of the id list
-    unordered_map<string, vector<unsigned>>::iterator it1 = originalGram.begin();
-    while (it1 != originalGram.end()) {
-		sortGramPair.push_back(*it1);
-        it1++;    
+                    gram = sout.str();
+                }
+                if (gramIdMap.find(gram) == gramIdMap.end()) {
+                    Gram newGram(gram);
+                    newGram.push_back(id);
+                    gramIdMap[gram] = sortGramList.size();
+                    sortGramList.push_back(newGram);
+                } else {
+                    unsigned index = gramIdMap[gram];
+                    sortGramList[index].push_back(id);
+                }
+            }
+        }
     }
-	sort(sortGramPair.begin(), sortGramPair.end(), gramCompare);
+    fin.close();
+    countID.resize(strings.size());
+    sort(sortGramList.begin(), sortGramList.end());
+    for (int i = 0; i < (int)sortGramList.size(); i++) {
+        gramIdMap[sortGramList[i].getGramStr()] = i;
+    }
+    maxLength = sortGramList.back().size();
 
-	// Link the gram(string) with the vector index(unsigned) with unordered_map
-	// and store the final sorted gram list
-    vector<pair<string, vector<unsigned>>>::iterator it2 = sortGramPair.begin();
-	while (it2 != sortGramPair.end()) {
-		sortGramList.push_back(it2->second);
-		gramIdMap[it2->first] = it2 - sortGramPair.begin();
-        it2++;
-	}
-	maxLength = sortGramList.back().size();
-
-	return SUCCESS;
+    return SUCCESS;
 }
 
 void SimSearcher::getQueryGramList(const char* query) {
@@ -158,7 +150,7 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 
 	// Initialize the heap
 	for (int i = 0; i < shortNum; ++i)
-		heap.push(make_pair(sortGramList[possibleList[i]].front(), possibleList[i]));
+		heap.push(make_pair(sortGramList[possibleList[i]].getList().front(), possibleList[i]));
 
 	// MergeSkip 
 	while (!heap.empty()) {
@@ -177,7 +169,7 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 			countID[topVal] = count;
             vector<pair<unsigned, unsigned>>::iterator it = poppedLists.begin();
 			while (it != poppedLists.end()) {
-				vector<unsigned> &currList = sortGramList[it->second];
+				vector<unsigned> &currList = sortGramList[it->second].getList();
 				if (++headPos[it->second] < currList.size()) {
 					heap.push(make_pair(currList[headPos[it->second]], it->second));
 				}
@@ -196,7 +188,7 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 			topVal = heap.top().first;
             vector<pair<unsigned, unsigned>>::iterator it(poppedLists.begin());
 			while (it != poppedLists.end()) {
-				vector<unsigned> &currList = sortGramList[it->second];
+				vector<unsigned> &currList = sortGramList[it->second].getList();
 				// Jump to the smallest record whose value >= heap top
 				vector<unsigned>::iterator findRes = lower_bound(currList.begin(), currList.end(), topVal);
 				if (findRes != currList.end()) {
@@ -215,8 +207,9 @@ void SimSearcher::mergeOpt(unsigned start, unsigned end, unsigned th) {
 	for (unordered_set<unsigned>::iterator it(shortResult.begin()); it != shortResult.end(); ++it) {
         // calculate times of appearance in the L long lists.
 		for (int i = start; i < (int)end; ++i) {
-			if (binary_search(sortGramList[possibleList[i]].begin(), sortGramList[possibleList[i]].end(), *it))
-				++countID[*it];
+			// if (binary_search(sortGramList[possibleList[i]].begin(), sortGramList[possibleList[i]].end(), *it))
+			if (sortGramList[possibleList[i]].hasKey(*it))
+                ++countID[*it];
 		}
 		if (countID[*it] >= th)
 			longResult.insert(*it);
