@@ -59,11 +59,18 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
         generateGramJac(str, words.size());
         words.push_back(str);
     };
+    int const initSize = 1024;
+    sortedList.resize(initSize);
+    candidates.resize(initSize);
+    poppedLists.resize(initSize);
+    headPos.resize(initSize/2);
+
+
 
     return (gramMapED.empty() || gramMapJac.empty()) ? FAILURE : SUCCESS;
 }
 
-void SimSearcher::getQueryGramListED(string &query, vector<InvertedList *> &list) {
+void SimSearcher::getQueryGramListED(string &query) {
     unordered_map<string, int> m;
     // get the list of q-grams
     for (int i = 0; i < query.length() - q + 1; ++ i) {
@@ -72,23 +79,23 @@ void SimSearcher::getQueryGramListED(string &query, vector<InvertedList *> &list
             // first-time appearance in the query grams 
             if (gramMapED.find(sub) != gramMapED.end()) {
                 // has appeared in the dataset
-                m[sub] = 0;
-                list.push_back(&gramMapED[sub].getList(m[sub]));
+                m[sub] = 0; 
+                sortedList.push_back(&gramMapED[sub].getList(m[sub]));
             }
         }
         else {
             ++ m[sub];
             if (m[sub] < gramMapED[sub].size())
-                list.push_back(&gramMapED[sub].getList(m[sub]));
+                sortedList.push_back(&gramMapED[sub].getList(m[sub]));
         }
     }
 }
 
-void SimSearcher::getQueryGramListJac(string &query, vector<InvertedList *> &list) {
+void SimSearcher::getQueryGramListJac(string &query) {
     for (auto & sub : querySubStr) {
         if (gramMapJac.find(sub) != gramMapJac.end()) {
             // has appeared in the dataset
-            list.push_back(&gramMapJac[sub].getList(0));
+            sortedList.push_back(&gramMapJac[sub].getList(0));
         }
     }
 }
@@ -97,138 +104,82 @@ bool list_Compare(const InvertedList *a, const InvertedList *b) {
     return (a->size() < b->size());
 };
 
-class Pair_Compare {
-public:
-    bool operator() (
-            const pair<vector<int>::iterator, vector<int>::iterator> &a, 
-            const pair<vector<int>::iterator, vector<int>::iterator> &b) {
-        return *(a.first) > *(b.first);
+struct heapCompare {
+    bool operator() (const pair<unsigned, unsigned>& a, const pair<unsigned, unsigned>& b) {
+        return a.first > b.first;
     }
 };
 
-// void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum) {
-//     // pair: <recordID, possible list ID>
-//     priority_queue<pair<unsigned, unsigned>, vector<pair<unsigned, unsigned>>,
-//                         heapCompare> heap;
-//     poppedLists.clear();
-//     shortResult.clear();
+void SimSearcher::mergeSkip(int threshold, int shortNum) {
+    // pair: <recordID, possible list ID>
+    priority_queue<pair<unsigned, unsigned>, vector<pair<unsigned, unsigned>>,
+                        heapCompare> heap;
+    poppedLists.clear();
+    candidates.clear();
 
-//     unsigned topVal;
-//     headPos.clear();
-//     headPos.resize(sortGramList.size());
+    int topVal;
+    headPos.clear();
+    headPos.resize(shortNum);
 
-//     // Initialize the heap
-//     for (int i = 0; i < shortNum; ++i)
-//         heap.push(make_pair(sortGramList[possibleList[i]].getList().front(), possibleList[i]));
+    // Initialize the heap
+    for (int i = 0; i < shortNum; ++i) {
+        heap.push(make_pair(sortedList[i]->getList().front(), i));
+    }
 
-//     // MergeSkip 
-//     while (!heap.empty()) {
-//         topVal = heap.top().first;
-//         unsigned count = 0;
-//         poppedLists.clear();
-//         // Pop all the same value on the top
-//         while (!heap.empty() && heap.top().first == topVal) {
-//             ++count;
-//             poppedLists.push_back(heap.top());
-//             heap.pop();
-//         }
-//         // Appear more than threshold times Select as a candidate
-//         if (count >= threshold) {
-//             shortResult.insert(topVal);
-//             countID[topVal] = count;
-//             vector<pair<unsigned, unsigned>>::iterator it = poppedLists.begin();
-//             while (it != poppedLists.end()) {
-//                 vector<unsigned> &currList = sortGramList[it->second].getList();
-//                 if (++headPos[it->second] < currList.size()) {
-//                     heap.push(make_pair(currList[headPos[it->second]], it->second));
-//                 }
-//                 ++it;
-//             }
-//         }
-//         // Pop impossible ones
-//         else {
-//             for (int i = 0; !heap.empty() && i < (int)(threshold - 1 - count); ++i) {
-//                 poppedLists.push_back(heap.top());
-//                 heap.pop();
-//             }
-//             if (heap.empty())
-//                 break;
-            
-//             topVal = heap.top().first;
-//             vector<pair<unsigned, unsigned>>::iterator it(poppedLists.begin());
-//             while (it != poppedLists.end()) {
-//                 vector<unsigned> &currList = sortGramList[it->second].getList();
-//                 // Jump to the smallest record whose value >= heap top
-//                 vector<unsigned>::iterator findRes = lower_bound(currList.begin(), currList.end(), topVal);
-//                 if (findRes != currList.end()) {
-//                     heap.push(make_pair(*findRes, it->second));
-//                 }
-//                 headPos[it->second] = findRes - currList.begin();
-//                 ++it;
-//             }
-//         }
-//     }
-// }
-
-void SimSearcher::mergeSkip(vector<InvertedList *> &shortLists, int shortNum,
-                            vector<pair<int, int>> & candidates) {
-
-    //initialize the priority queue
-    priority_queue<pair<vector<int>::iterator, vector<int>::iterator>,
-                   vector<pair<vector<int>::iterator, vector<int>::iterator>>,
-                   Pair_Compare> heap;
-    for (auto & i : shortLists)
-        heap.push(make_pair(i->getList().begin(), i->getList().end()));
-    
-    //use MergeSkip to find ids that appear >= (T - L) times in the short lists
-    while(heap.size() >= shortNum) {
-        vector<pair<vector<int>::iterator, vector<int>::iterator> > t;
-        t.push_back(heap.top());
-        heap.pop();
-
-        while(!heap.empty()) {
-            if (*(heap.top().first) == *(t[0].first)) {
-                t.push_back(heap.top());
-                heap.pop();
-            } else 
-                break;
+    // MergeSkip 
+    while (!heap.empty()) {
+        topVal = heap.top().first;
+        unsigned count = 0;
+        poppedLists.clear();
+        // Pop all the same value on the top
+        while (!heap.empty() && heap.top().first == topVal) {
+            ++count;
+            poppedLists.push_back(heap.top());
+            heap.pop();
         }
-
-        int appearance = t.size();
-        if (appearance >= shortNum) {
-            candidates.push_back(make_pair(*(t[0].first), appearance));
-            // push next record on each popped list to the priority queue.
-            for (auto & i : t)
-                if ((i.first + 1) != i.second)
-                    heap.push(make_pair(i.first + 1, i.second));
-        } else if (heap.size() >= (shortNum - appearance)) {
-            // pop another (T-L-1-appearance) smallest records from the priority queue.
-            for (int i = 0; i < shortNum - 1 - appearance; ++ i) {
-                t.push_back(heap.top());
+        // Appear more than T-L times Select as a candidate
+        if (count >= threshold) {
+            candidates.push_back(make_pair(topVal, count));
+            for (auto &pop : poppedLists) {
+                vector<int> & currList = sortedList[pop.second]->getList();
+                if (++headPos[pop.second] < currList.size()) {
+                    heap.push(make_pair(currList[headPos[pop.second]], pop.second));
+                }
+            }
+            
+        }
+        // Pop impossible ones
+        else {
+            for (int i = 0; !heap.empty() && i < (int)(threshold - 1 - count); ++i) {
+                poppedLists.push_back(heap.top());
                 heap.pop();
             }
-
-            // for the total T-L-1 popped lists, jump to the smallest record whose 
-            // value >= the value of the top of heap
-            for (auto & i : t) {
-                vector<int>::iterator iter =
-                    lower_bound(i.first, i.second, *(heap.top().first));
-                if (iter != i.second)
-                    heap.push(make_pair(iter, i.second));
+            if (heap.empty())
+                break;
+            
+            topVal = heap.top().first;
+            for (auto & pop : poppedLists) {
+                vector<int> &currList = sortedList[pop.second]->getList();
+                // Jump to the smallest record whose value >= heap top
+                vector<int>::iterator findRes = lower_bound(currList.begin(), currList.end(), topVal);
+                if (findRes != currList.end()) {
+                    heap.push(make_pair(*findRes, pop.second));
+                }
+                headPos[pop.second] = findRes - currList.begin();
             }
         }
     }
 }
 
-void SimSearcher::mergeOpt(vector<InvertedList*> &longList,
-                           vector<pair<int, int>>& candidates, int T) {
+void SimSearcher::mergeOpt(int begin, int end, int T) {
     // calculate times of appearance in the L long lists.
     for (auto& pair : candidates) {
         int cnt = pair.second;
-        for (auto & i : longList)
-            if (i->hasKey(pair.first))
-                ++ cnt;
-
+        for (int i = begin; i < end; i++) {
+            if (sortedList[i]->hasKey(pair.first)) {
+                ++cnt;
+            }
+        }
         // if total appearance times >= T, add to result.
         if (cnt >= T)
             rawResult[pair.first] = true;
@@ -236,26 +187,21 @@ void SimSearcher::mergeOpt(vector<InvertedList*> &longList,
 
 }
 
-void SimSearcher::divideSkip(vector<InvertedList *> &list, int T) {
+void SimSearcher::divideSkip(int T) {
     //sort q-grams by length in the descending order
-    sort(list.begin(), list.end(), list_Compare);
+    sort(sortedList.begin(), sortedList.end(), list_Compare);
     //get the L longest lists
-    int L = min((double(T)) / (U * log((double)(*(list.back())).size()) + 1),
+    int L = min((double(T)) / (U * log((double)(*(sortedList.back())).size()) + 1),
                 double(T - 1));
-    vector<InvertedList *> longList;
+    L = T - 1;
+    int shortNum = sortedList.size() - int(L);
     // start = clock();
-    for (int i = 0; i < L && !list.empty(); ++ i) {
-        longList.push_back(list.back());
-        list.pop_back();
-    }
-    vector<pair<int, int>> candidates;
-    // start = clock();
-    mergeSkip(list, T-L, candidates);
+    mergeSkip(T-L, shortNum);
     // finish = clock();
     // printf("divideSkip: %.2lfs\n", (finish-start)/1000.0);
     // start = clock();
 
-    mergeOpt(longList, candidates, T);
+    mergeOpt(shortNum, sortedList.size(), T);
     // finish = clock();
     // printf("mergeOpt: %.2lfs\n", (finish-start)/1000.0);
 
@@ -263,11 +209,11 @@ void SimSearcher::divideSkip(vector<InvertedList *> &list, int T) {
 }
 
 void SimSearcher::filterED(string &query, int T) {
-    vector<InvertedList *> list;
+    sortedList.clear();
     rawResult.clear();
     if (T != 0 && query.length() >= q) {
-        getQueryGramListED(query, list);
-        divideSkip(list, T);
+        getQueryGramListED(query);
+        divideSkip(T);
     } else {
         // when (T == 0 || query.length() < q) calculate directly.
         for (int i = 0; i < words.size(); ++ i)
@@ -276,11 +222,11 @@ void SimSearcher::filterED(string &query, int T) {
 }
 
 void SimSearcher::filterJac(string &query, int T) {
-    vector<InvertedList *> list;
+    sortedList.clear();
     rawResult.clear();
     if (T != 0 && query.length() >= q) {
-        getQueryGramListJac(query, list);
-        divideSkip(list, T);
+        getQueryGramListJac(query);
+        divideSkip(T);
     } else {
         // when (T == 0 || query.length() < q) calculate directly.
         for (int i = 0; i < words.size(); ++ i)

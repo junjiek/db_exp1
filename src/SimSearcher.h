@@ -22,7 +22,10 @@ private:
     unordered_map<string, Gram> gramMapJac;
     unordered_set<string> querySubStr;
     map<int, bool> rawResult;
-
+    vector<pair<int, int>> candidates;
+    vector<pair<unsigned, unsigned>>    poppedLists;
+    vector<unsigned> headPos;
+    vector<InvertedList*> sortedList;
     void setQ(int qq) { q = qq; }
     void generateGramED(string &s, unsigned line_num);
     void generateGramJac(string &s, unsigned line_num);
@@ -33,15 +36,13 @@ private:
     int edT(string &query, unsigned threshold);
 
     // get the lists of grams for the query
-    void getQueryGramListED(string &query, vector<InvertedList *> &list);
-    void getQueryGramListJac(string &query, vector<InvertedList *> &list);
+    void getQueryGramListED(string &query);
+    void getQueryGramListJac(string &query);
     void filterED(string &query, int T);
     void filterJac(string &query, int T);
-    void divideSkip(vector<InvertedList *> &list, int T);
-    void mergeSkip(vector<InvertedList *> &shortLists, int shortNum,
-                   vector<pair<int, int>> & candidates);
-    void mergeOpt(vector<InvertedList*> &longList,
-                  vector<pair<int, int>>& candidates, int T); 
+    void divideSkip(int T);
+    void mergeSkip(int threshold, int shortNum);
+    void mergeOpt(int begin, int end, int T); 
     // Calculate real dist to verify
     int levenshteinDist(string s, string t, int threshold);
     double jaccardDist(string &w);
