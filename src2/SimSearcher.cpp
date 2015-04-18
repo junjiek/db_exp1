@@ -281,7 +281,11 @@ bool resultCompare(const pair<unsigned, unsigned>& a, const pair<unsigned, unsig
 int SimSearcher::searchJaccard(const char *query, double threshold,
                                  vector<pair<unsigned, double> > &result) {
     result.clear();
-    if (divideSkip(query, jaccardT(query, threshold))) {
+    clock_t start = clock();
+    bool flag = divideSkip(query, jaccardT(query, threshold));
+    clock_t end = clock();
+    printf("divideSkip: %.2lfs\n", (end-start)/1000.0);
+    if (flag) {
         // Check the candidates and 'empty'(very short) words
         double jac = 0.0;
         unordered_set<unsigned>::iterator it1 = longResult.begin();
@@ -439,8 +443,16 @@ bool SimSearcher::divideSkip(const char *query, int T) {
     if (shortNum <= 0)
         return false;
     // Use MergeSkip on L shortest list
+    clock_t start = clock();
     mergeSkip(query, T - L, shortNum);
+    clock_t end = clock();
+    printf("mergeSkip: %.2lfs\n", (end-start)/1000.0);
+
+    start = clock();
     mergeOpt(shortNum, possibleList.size(), T);
+    end = clock();
+    printf("mergeOpt: %.2lfs\n", (end-start)/1000.0);
+
 
     return true;
 }
@@ -449,7 +461,12 @@ bool SimSearcher::divideSkip(const char *query, int T) {
 int SimSearcher::searchED(const char *query, unsigned threshold,
                           vector<pair<unsigned, unsigned> > &result) {
     result.clear();
-    if (divideSkip(query, edT(query, threshold))) {
+    clock_t start = clock();
+    bool flag = divideSkip(query, edT(query, threshold));
+    clock_t end = clock();
+    printf("divideSkip: %.2lfs\n", (end-start)/1000.0);
+
+    if (flag) {
         unsigned ed = 0;
         unordered_set<unsigned>::iterator it1 = longResult.begin();
         while (it1 != longResult.end()) {
