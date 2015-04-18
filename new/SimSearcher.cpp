@@ -63,11 +63,11 @@ void SimSearcher::mergeskip(int T, int thershold, int qSiz) {
         int j = dataStr.size() - 1;
         for (int i = miniStr.size()-1; i >= 0; --i) {
             for (int k = j; k > miniStr[i]; --k)
-                if (abs(inputLen[k]-qSiz) <= thershold) new_index.push_back(k);
+                if (abs(lineLen[k]-qSiz) <= thershold) new_index.push_back(k);
             j = miniStr[i] - 1;
         }
         for (int k = j; k >= 0; --k)
-            if (abs(inputLen[k]-qSiz)<=thershold) new_index.push_back(k);
+            if (abs(lineLen[k]-qSiz)<=thershold) new_index.push_back(k);
         return;
     }
     ++times;
@@ -82,7 +82,7 @@ void SimSearcher::mergeskip(int T, int thershold, int qSiz) {
             int temp = current[j];
             if (visitor[temp] != times) {
                 visitor[temp] = times;
-                if (abs(inputLen[temp] - qSiz) <= thershold) new_index.push_back(temp);
+                if (abs(lineLen[temp] - qSiz) <= thershold) new_index.push_back(temp);
             }
         }
         i++;
@@ -127,7 +127,7 @@ unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qSiz, co
 }
 
 void SimSearcher::createED(int lineNum, const char * s) {
-    int length = inputLen[lineNum];
+    int length = lineLen[lineNum];
     if (length < q) {
         miniStr.push_back(lineNum);
         return;
@@ -143,7 +143,7 @@ void SimSearcher::createED(int lineNum, const char * s) {
 }
 
 void SimSearcher::createJCD(int lineNum, const char * s) {
-    int ssize = inputLen[lineNum], sum = 0;
+    int ssize = lineLen[lineNum], sum = 0;
     vector<int> iList;
     vector<int> empty;
     iList.clear();
@@ -201,7 +201,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
     string line;
     char * buf;
     while (getline(fin, line)) {
-        inputLen.push_back((int)line.length());
+        lineLen.push_back((int)line.length());
         int lineNum = dataStr.size();
         buf = (char*)malloc(1000);
         strcpy(buf, line.c_str()); 
@@ -316,7 +316,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     int size = miniStr.size();
     for (int i = new_index.size()-1; i >= 0; --i) {
         int tmpI = new_index[i];
-        unsigned tmpU = calED(dataStr[tmpI], threshold, inputLen[tmpI],qSiz,query);
+        unsigned tmpU = calED(dataStr[tmpI], threshold, lineLen[tmpI],qSiz,query);
         if (tmpU <= threshold)
             result.push_back(make_pair(tmpI, tmpU));
     }
@@ -324,7 +324,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
         int tmp1 = miniStr[j];
         //if (abs(len[tmpI]-squerysize)<=threshold)
         {
-            unsigned tmp2 = calED(dataStr[tmp1], threshold, inputLen[tmp1],qSiz,query);
+            unsigned tmp2 = calED(dataStr[tmp1], threshold, lineLen[tmp1],qSiz,query);
             if (tmp2 <= threshold)
                 result.push_back(make_pair(tmp1, tmp2));
         }

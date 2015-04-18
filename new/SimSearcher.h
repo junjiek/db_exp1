@@ -37,7 +37,7 @@ private:
 
 	vector<int> miniStr;
 	vector<const char*> dataStr;
-	vector<int> inputLen;
+	vector<int> lineLen;
 	vector<int> visitor;
 	vector<int> new_index;
 	vector<int> queryCnt;
