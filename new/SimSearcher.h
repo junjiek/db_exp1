@@ -6,8 +6,11 @@ using namespace std;
 
 const int SUCCESS = 0;
 const int FAILURE = 1;
-#define BUFFSIZ 300
-
+#define MIN(a,b,c) (a<b?(a<c?a:c):(b<c?b:c))
+#define T1 1
+#define MAXN 1000000
+#define HASH 95891
+#define BUFSIZE 300
 class SimSearcher{
 private:
 	int editDistance(const char* s1, const char* s2, int len1, int len2, int threshold);
@@ -51,8 +54,8 @@ private:
 	int querySize;
 	int leave;
 
-	int v[2][BUFFSIZ];
-	int hash_v[BUFFSIZ];
+	int v[2][BUFSIZE];
+	int hash_v[BUFSIZE];
 
 public:
 	SimSearcher();

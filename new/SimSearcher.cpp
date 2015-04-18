@@ -12,19 +12,13 @@
 
 using namespace std;
 
-#define MIN(a,b,c) (a<b?(a<c?a:c):(b<c?b:c))
-#define T1 1
-#define MAXN 1000000
-#define BUFFSIZ 300
-#define hashPara 97362
 
-int wordExis[MAXN][BUFFSIZ];
+
+int wordExis[MAXN][BUFSIZE];
 int wordIndx[MAXN];
 int visit[MAXN];
 
-typedef unordered_map<int, vector<int> > hash_map;
-
-hash_map hashED;
+unordered_map<int, vector<int>> hashED;
 
 SimSearcher::SimSearcher() {
     minSubStrSize = INT_MAX;
@@ -132,12 +126,14 @@ void SimSearcher::createED(int lineNum, const char * s) {
         miniStr.push_back(lineNum);
         return;
     }
-    int cur1 = 0,i = 0;
-    while(i < q) cur1 = cur1 * hashPara + s[i++];
-    hashED[cur1].push_back(lineNum);
-    for (int i = q; i < length; ++i) {
-        cur1 = cur1 * hashPara + s[i] - hash_v[(unsigned)(s[i-q])];
-        vector<int> &arr = hashED[cur1];
+    int hashCode = 0;
+    for (int i = 0; i < q; i++) {
+        hashCode = hashCode * HASH + s[i];
+    }
+    hashED[hashCode].push_back(lineNum);
+    for (int i = q; i < length; i++) {
+        hashCode = hashCode * HASH + s[i] - hash_v[(unsigned)(s[i-q])];
+        vector<int> &arr = hashED[hashCode];
         if (arr.empty() || arr.back() != lineNum) arr.push_back(lineNum);
     }
 }
@@ -189,9 +185,9 @@ void SimSearcher::createJCD(int lineNum, const char * s) {
 
 void SimSearcher::hash_init() {
     hash_v[1] = 1;
-    for (int i = 0; i < q; ++i) hash_v[1] = hash_v[1] * hashPara;
+    for (int i = 0; i < q; ++i) hash_v[1] = hash_v[1] * HASH;
     hash_v[0] = 0;
-    for (int i = 2; i < BUFFSIZ; ++i) hash_v[i] = hash_v[i-1]+hash_v[1];
+    for (int i = 2; i < BUFSIZE; ++i) hash_v[i] = hash_v[i-1]+hash_v[1];
 }
 
 int SimSearcher::createIndex(const char *filename, unsigned q) {
@@ -219,13 +215,15 @@ void SimSearcher::EDSets(int qSiz, const char* query){
     data.clear();
     querySize = qSiz + 1 - q;
     if (qSiz < q) return;
-    int curent = 0;
-    for (int i = 0; i < q; ++i) curent = curent * hashPara + query[i];
-    hash_map::iterator it = hashED.find(curent);
+    int hashCode = 0;
+    for (int i = 0; i < q; ++i) {
+        hashCode = hashCode * HASH + query[i];
+    }
+    unordered_map<int, vector<int>>::iterator it = hashED.find(hashCode);
     if (it != hashED.end()) data.push_back(&(it->second));
     for (int i = q; i < qSiz; ++i) {
-        curent = curent * hashPara + query[i] - hash_v[(unsigned)(query[i-q])];
-        hash_map::iterator it = hashED.find(curent);
+        hashCode = hashCode * HASH + query[i] - hash_v[(unsigned)(query[i-q])];
+        unordered_map<int, vector<int>>::iterator it = hashED.find(hashCode);
         if (it == hashED.end()) continue;
             data.push_back(&(it->second));
     }
