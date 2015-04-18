@@ -102,7 +102,7 @@ double SimSearcher::calJCD(int index, double thershold) {
     return (double)intersec / (q + bsize-j);
 }
 
-unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qSiz, const char* Query) {
+unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qSiz, const char* query) {
     int length = qSiz;
     if (abs(asize-length)>thershold) return thershold+1;
     int mm[1024];
@@ -117,7 +117,7 @@ unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qSiz, co
             int y = mm[j];
             int z = mm[j+1] + 1;
             int pos = i + j - offset;
-            if (pos < 0 || pos >= length || a[i] != Query[pos]) ++y;
+            if (pos < 0 || pos >= length || a[i] != query[pos]) ++y;
             mm[j] = MIN(x,y,z);
         }
         while (mm[lo] > thershold) ++lo;
@@ -193,7 +193,7 @@ void SimSearcher::hash_init() {
 }
 
 int SimSearcher::createIndex(const char *filename, unsigned q) {
-    this -> q = q;
+    this-> q = q;
     hash_init();
     ifstream fin(filename);
     string line;
@@ -213,22 +213,22 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 
 }
 
-void SimSearcher::EDSets(int qSiz, const char* Query){
+void SimSearcher::EDSets(int qSiz, const char* query){
     data.clear();
     querySize = qSiz + 1 - q;
     if (qSiz < q) return;
     int curent = 0;
-    for (int i = 0; i < q; ++i) curent = curent * hashPara + Query[i];
+    for (int i = 0; i < q; ++i) curent = curent * hashPara + query[i];
     hash_map::iterator it = hashED.find(curent);
     if (it != hashED.end()) data.push_back(&(it->second));
     for (int i = q; i < qSiz; ++i) {
-        curent = curent * hashPara + Query[i] - hash_v[(unsigned)(Query[i-q])];
+        curent = curent * hashPara + query[i] - hash_v[(unsigned)(query[i-q])];
         hash_map::iterator it = hashED.find(curent);
         if (it == hashED.end()) continue;
             data.push_back(&(it->second));
     }
 }
-void SimSearcher::JCDSets(int qSiz, const char* Query) {
+void SimSearcher::JCDSets(int qSiz, const char* query) {
     data.clear();
     querySize = 0;
     otherWord = 0;
@@ -236,9 +236,9 @@ void SimSearcher::JCDSets(int qSiz, const char* Query) {
     int current = 1;
     ++times;
     bool find = false;
-    //cout << sQuery << endl;
+    //cout << squery << endl;
     for (int i = 0; i < qSiz; ++i)
-        if (Query[i] == ' ') {
+        if (query[i] == ' ') {
             int num = wordIndx[current];
             if (!find && num != -1)
             {
@@ -259,7 +259,7 @@ void SimSearcher::JCDSets(int qSiz, const char* Query) {
         {
             if (find)
                 continue;
-            int to = Query[i];
+            int to = query[i];
             int &next = wordExis[current][to];
             if (next == 0)
             {
@@ -290,8 +290,7 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
     result.clear();
     new_index.clear();
     int qSiz = strlen(query);
-    char* Query = (char*)query;
-    JCDSets(qSiz,Query);
+    JCDSets(qSiz,query);
 
     mergeskip(ceil(fmax(threshold*querySize, (querySize+minSubStrSize)*threshold/(1+threshold))), INT_MAX,qSiz);
     for (int i = new_index.size()-1; i >= 0; --i) {
@@ -309,7 +308,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     result.clear();
     new_index.clear();
     int qSiz = strlen(query);
-    // char* Query = (char*)query;
+    // char* query = (char*)query;
     EDSets(qSiz,query);
     mergeskip(querySize-threshold*q, threshold,qSiz);//MERGE
     int size = miniStr.size();
@@ -321,7 +320,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     }
     for (int j = 0; j < size; ++j) {
         int tmp1 = miniStr[j];
-        //if (abs(len[tmpI]-sQuerysize)<=threshold)
+        //if (abs(len[tmpI]-squerysize)<=threshold)
         {
             unsigned tmp2 = calED(dataStr[tmp1], threshold, inputLen[tmp1],qSiz,query);
             if (tmp2 <= threshold)
