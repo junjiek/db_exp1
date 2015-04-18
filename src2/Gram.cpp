@@ -15,9 +15,9 @@ bool Gram::hasKey(unsigned key) {
 }
 
 void Gram::print() {
-    cout << "+ "  << gram << ": [";
+    cout << "+ "  << gram << ": ";
     for (auto & i : list) {
-        cout << i << ", ";
+        cout << i << " ";
     }
-    cout  << "]" << endl;
+    cout << endl;
 }

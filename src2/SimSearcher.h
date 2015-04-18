@@ -3,6 +3,7 @@
 #include <utility>
 #include <unordered_map>
 #include <unordered_set>
+#include <map>
 #include <queue>
 #include "Gram.h"
 
@@ -31,7 +32,7 @@ private:
     vector<unsigned>                    possibleList;   // store possible index in the sortGram.
     vector<unsigned>                    countID;        // countID[i]: appearance times of strings[i]
     unordered_set<unsigned>             shortResult;    // candidate from the 'short' part (id)
-    unordered_set<unsigned>             longResult;     // candidate from the 'long' part (id)
+    map<unsigned, bool>                 longResult;     // candidate from the 'long' part (id)
 
     vector<pair<unsigned, unsigned>>    poppedLists;    // pair: <wordID, sorted gram list ID>
     // calcultate T to filter the impossible ones

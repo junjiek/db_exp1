@@ -154,8 +154,11 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 	headPos.resize(sortGramList.size());
 
 	// Initialize the heap
-	for (int i = 0; i < shortNum; ++i)
+	for (int i = 0; i < shortNum; ++i) {
+        sortGramList[possibleList[i]].print();
+        
 		heap.push(make_pair(sortGramList[possibleList[i]].getList().front(), possibleList[i]));
+    }
 
 	// MergeSkip 
 	while (!heap.empty()) {
@@ -170,6 +173,7 @@ void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum)
 		}
         // Appear more than threshold times Select as a candidate
 		if (count >= threshold) {
+            cout  << "("<< topVal << ", " <<  count << ") ";
 			shortResult.insert(topVal);
 			countID[topVal] = count;
             vector<pair<unsigned, unsigned>>::iterator it = poppedLists.begin();
@@ -217,7 +221,7 @@ void SimSearcher::mergeOpt(unsigned start, unsigned end, unsigned th) {
                 ++countID[*it];
 		}
 		if (countID[*it] >= th)
-			longResult.insert(*it);
+			longResult[*it] = true;
 	}
 }
 
@@ -281,20 +285,16 @@ bool resultCompare(const pair<unsigned, unsigned>& a, const pair<unsigned, unsig
 int SimSearcher::searchJaccard(const char *query, double threshold,
                                  vector<pair<unsigned, double> > &result) {
     result.clear();
-    clock_t start = clock();
-    bool flag = divideSkip(query, jaccardT(query, threshold));
-    clock_t end = clock();
-    printf("divideSkip: %.2lfs\n", (end-start)/1000.0);
-    if (flag) {
+    if (divideSkip(query, jaccardT(query, threshold))) {
         // Check the candidates and 'empty'(very short) words
         double jac = 0.0;
-        unordered_set<unsigned>::iterator it1 = longResult.begin();
-        while (it1 != longResult.end()) {
-            jac = getJac(query, strings[*it1].c_str());
+
+        for (auto & i : longResult) {
+            jac = getJac(query, strings[i.first].c_str());
             if (jac >= threshold)
-                result.push_back(make_pair(*it1, jac));
-            ++it1;
+                result.push_back(make_pair(i.first, jac));
         }
+
         vector<unsigned>::iterator it2 = emptyID.begin();
         while (it2 != emptyID.end()) {
             jac = getJac(query, strings[*it2].c_str());
@@ -302,7 +302,6 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
                 result.push_back(make_pair(*it2, jac));
             ++it2;
         }
-        sort(result.begin(), result.end(), resultCompare);  
     } else {
         double jac = 0.0;
         for (int i = 0; i < (int)strings.size(); ++i) {
@@ -443,16 +442,18 @@ bool SimSearcher::divideSkip(const char *query, int T) {
     if (shortNum <= 0)
         return false;
     // Use MergeSkip on L shortest list
+    cout << "L: " << L << "T: " << T << endl;
+
     clock_t start = clock();
     mergeSkip(query, T - L, shortNum);
-    clock_t end = clock();
-    printf("mergeSkip: %.2lfs\n", (end-start)/1000.0);
-
+    clock_t finish = clock();
+    printf("mergeSkip: %.2lfs\n", (finish-start)/1000.0);
+    cout << "possibleList size: " << possibleList.size() << endl;
     start = clock();
     mergeOpt(shortNum, possibleList.size(), T);
-    end = clock();
-    printf("mergeOpt: %.2lfs\n", (end-start)/1000.0);
-
+    finish = clock();
+    printf("mergeOpt: %.2lfs\n", (finish-start)/1000.0);
+    
 
     return true;
 }
@@ -461,21 +462,12 @@ bool SimSearcher::divideSkip(const char *query, int T) {
 int SimSearcher::searchED(const char *query, unsigned threshold,
                           vector<pair<unsigned, unsigned> > &result) {
     result.clear();
-    clock_t start = clock();
-    bool flag = divideSkip(query, edT(query, threshold));
-    clock_t end = clock();
-    printf("divideSkip: %.2lfs\n", (end-start)/1000.0);
-
-    if (flag) {
+    if (divideSkip(query, edT(query, threshold))) {
         unsigned ed = 0;
-        unordered_set<unsigned>::iterator it1 = longResult.begin();
-        while (it1 != longResult.end()) {
-            // ed = getED(query, strings[*it1].c_str(), threshold);
-            ed = levenshteinDist(string(query), strings[*it1], threshold);
-
+        for (auto & i : longResult) {
+            ed = levenshteinDist(string(query), strings[i.first], threshold);
             if (ed <= threshold)
-                result.push_back(make_pair(*it1, ed));
-            ++it1;
+                result.push_back(make_pair(i.first, ed));
         }
         vector<unsigned>::iterator it2 = emptyID.begin();
         while (it2 != emptyID.end()) {
