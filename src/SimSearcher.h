@@ -21,7 +21,7 @@ private:
     unordered_map<string, Gram> gramMapED;
     unordered_map<string, Gram> gramMapJac;
     unordered_set<string> querySubStr;
-    unordered_set<int> rawResult;
+    map<int, bool> rawResult;
 
     void setQ(int qq) { q = qq; }
     void generateGramED(string &s, unsigned line_num);

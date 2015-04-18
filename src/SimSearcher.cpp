@@ -10,7 +10,7 @@
 
 using namespace std;
 
-clock_t start, finish;
+// clock_t start, finish;
 
 void SimSearcher::generateGramED(string &s, unsigned line_num) {
     if (s.length() < q)
@@ -231,7 +231,7 @@ void SimSearcher::mergeOpt(vector<InvertedList*> &longList,
 
         // if total appearance times >= T, add to result.
         if (cnt >= T)
-            rawResult.insert(pair.first);
+            rawResult[pair.first] = true;
     }
 
 }
@@ -243,7 +243,7 @@ void SimSearcher::divideSkip(vector<InvertedList *> &list, int T) {
     int L = min((double(T)) / (U * log((double)(*(list.back())).size()) + 1),
                 double(T - 1));
     vector<InvertedList *> longList;
-    start = clock();
+    // start = clock();
     for (int i = 0; i < L && !list.empty(); ++ i) {
         longList.push_back(list.back());
         list.pop_back();
@@ -271,7 +271,7 @@ void SimSearcher::filterED(string &query, int T) {
     } else {
         // when (T == 0 || query.length() < q) calculate directly.
         for (int i = 0; i < words.size(); ++ i)
-            rawResult.insert(i);
+            rawResult[i] = true;
     }
 }
 
@@ -284,7 +284,7 @@ void SimSearcher::filterJac(string &query, int T) {
     } else {
         // when (T == 0 || query.length() < q) calculate directly.
         for (int i = 0; i < words.size(); ++ i)
-            rawResult.insert(i);
+            rawResult[i] = true;
     }
 }
 
@@ -411,9 +411,9 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
 
     //eliminate false positive
     for (auto & i : rawResult) {
-        double dis = jaccardDist(words[i]);
+        double dis = jaccardDist(words[i.first]);
         if (dis >= threshold)
-            result.push_back(make_pair(i, dis));
+            result.push_back(make_pair(i.first, dis));
     }
 
     return SUCCESS;
@@ -430,9 +430,9 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
 
     //eliminate the false positives
     for (auto & i : rawResult) {
-        unsigned dis = levenshteinDist(words[i], query, threshold);
+        unsigned dis = levenshteinDist(words[i.first], query, threshold);
         if (dis <= threshold)
-            result.push_back(make_pair(i, dis));
+            result.push_back(make_pair(i.first, dis));
     }
 
     return SUCCESS;
