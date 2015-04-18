@@ -78,8 +78,8 @@ void SimSearcher::mergeskip(int T, int thershold, int qLen) {
         i++;
     }
 }
-double SimSearcher::calJCD(int index, double thershold) {
-    vector<int> &temp = indexJCD[index];
+double SimSearcher::calJac(int index, double thershold) {
+    vector<int> &temp = indexJac[index];
     int length = temp.size(), bsize = querySize;
     if (length * thershold > bsize || bsize * thershold > length) return 0;
     int intersec = 0, q = otherWord + length;
@@ -128,30 +128,32 @@ void SimSearcher::createED(int lineNum, const char * str) {
     hashED[hashCode].push_back(lineNum);
     for (int i = q; i < lineLen[lineNum]; i++) {
         hashCode = hashCode * HASH - n_Hashq[(int)(str[i-q])] + str[i];
-        vector<int> &arr = hashED[hashCode];
-        if (arr.empty() || arr.back() != lineNum) arr.push_back(lineNum);
+        vector<int> &list = hashED[hashCode];
+        if (list.empty() || list.back() != lineNum) {
+            list.push_back(lineNum);
+        }
     }
 }
 
-void SimSearcher::createJCD(int lineNum, const char * str) {
-    int ssize = lineLen[lineNum], sum = 0;
+void SimSearcher::createJac(int lineNum, const char * str) {
     vector<int> iList;
     vector<int> empty;
     iList.clear();
     empty.clear();
     int current = 1,i = 0;
-    while(i < ssize) {
+    int subStrSize = 0;
+    while(i < lineLen[lineNum]) {
         if (str[i] == ' ') {
             int &tmpI = wordIndx[current];
             if (tmpI == -1) {
                 tmpI = wordNum++;
-                listJCD.push_back(empty);
+                listJac.push_back(empty);
             }
-            vector<int> &arr = listJCD[tmpI];
+            vector<int> &arr = listJac[tmpI];
             if (arr.empty() || arr.back() != lineNum) {
                 arr.push_back(lineNum);
                 iList.push_back(tmpI);
-                ++sum;
+                ++subStrSize;
             }
             current = 1;
         } else {
@@ -165,17 +167,17 @@ void SimSearcher::createJCD(int lineNum, const char * str) {
     int &tmpI = wordIndx[current];
     if (tmpI == -1) {
         tmpI = wordNum++;
-        listJCD.push_back(empty);
+        listJac.push_back(empty);
     }
-    vector<int> &arr = listJCD[tmpI];
+    vector<int> &arr = listJac[tmpI];
     if (arr.empty() || arr.back() != lineNum) {
         arr.push_back(lineNum);
         iList.push_back(tmpI);
-        ++sum;
+        ++subStrSize;
     }
-    if (minSubStrSize > sum) minSubStrSize = sum;
+    if (minSubStrSize > subStrSize) minSubStrSize = subStrSize;
     sort(iList.begin(), iList.end());
-    indexJCD.push_back(iList);
+    indexJac.push_back(iList);
 }
 
 inline int mypow(int x, int y) {
@@ -205,7 +207,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
         strcpy(buf, line.c_str()); 
         dataStr.push_back(buf);
         createED(lineNum, buf);
-        createJCD(lineNum, buf);
+        createJac(lineNum, buf);
     };
     fin.close();
     visitor.resize(dataStr.size());
@@ -246,7 +248,7 @@ void SimSearcher::getListsJac(int qLen, const char* query) {
         if (query[i] == ' ') {
             int num = wordIndx[current];
             if (!find && num != -1) {
-                data.push_back(&listJCD[num]);
+                data.push_back(&listJac[num]);
                 if (visit[num] != times) {
                     visit[num] = times;
                     queryCnt.push_back(num);
@@ -272,7 +274,7 @@ void SimSearcher::getListsJac(int qLen, const char* query) {
     {
         int num = wordIndx[current];
         if (!find && num != -1) {
-            data.push_back(&listJCD[num]);
+            data.push_back(&listJac[num]);
             if (visit[num] != times) {
                 visit[num] = times;
                 queryCnt.push_back(num);
@@ -295,7 +297,7 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
 
     mergeskip(ceil(fmax(threshold*querySize, (querySize+minSubStrSize)*threshold/(1+threshold))), INT_MAX,qLen);
     for (int i = new_index.size()-1; i >= 0; --i) {
-        double tmpD = calJCD(new_index[i], threshold);
+        double tmpD = calJac(new_index[i], threshold);
         //cout << filter[i] << ":" << tmpD << endl;
         if (tmpD > threshold - 1e-8)
             result.push_back(make_pair(new_index[i], tmpD));
