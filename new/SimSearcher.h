@@ -23,8 +23,8 @@ private:
 	void hash_init();
 	double calJCD(int ind, double ths);
 	unsigned calED(const char *a, int thershold, int asize,int qSiz, const char* Query);
-	void createED(int lineID, const char* s);
-	void createJCD(int lineID, const char* s);
+	void createED(int lineNum, const char* s);
+	void createJCD(int lineNum, const char* s);
 	void defsort(int h, int t, int num);
 	void mergeskip(int T, int thershold,int qSiz);
 	void EDSets(int qSiz, const char* Query);
@@ -47,13 +47,10 @@ private:
 	int otherWord;
 	int times;
 	int minSubStrSize;
-	// int lineNum;
 	int q;
 	int querySize;
 	int leave;
 
-	char ch;
-	char *aLine;
 	int v[2][BUFFSIZ];
 	int hash_v[BUFFSIZ];
 

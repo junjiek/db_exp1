@@ -37,16 +37,15 @@ SimSearcher::SimSearcher() {
 }
 
 SimSearcher::~SimSearcher() {}
+
 void SimSearcher::defsort(int from, int to, int length) {
     int i = from, j = to;
     unsigned k = data[(from + to) >> 1]->size();
     do {
         while (data[i]->size()>k) ++i;
         while (data[j]->size()<k) --j;
-        if (i <= j)
-        {
-            if (data[i]->size() != data[j]->size())
-            {
+        if (i <= j) {
+            if (data[i]->size() != data[j]->size()) {
                 vector<int> *tmp = data[i];
                 data[i] = data[j];
                 data[j] = tmp;
@@ -127,21 +126,24 @@ unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qSiz, co
     return mm[anspos];
 }
 
-void SimSearcher::createED(int IDLine, const char * s) {
-    int length = inputLen[IDLine];
-    if (length < q){miniStr.push_back(IDLine);return;}
+void SimSearcher::createED(int lineNum, const char * s) {
+    int length = inputLen[lineNum];
+    if (length < q) {
+        miniStr.push_back(lineNum);
+        return;
+    }
     int cur1 = 0,i = 0;
     while(i < q) cur1 = cur1 * hashPara + s[i++];
-    hashED[cur1].push_back(IDLine);
+    hashED[cur1].push_back(lineNum);
     for (int i = q; i < length; ++i) {
         cur1 = cur1 * hashPara + s[i] - hash_v[(unsigned)(s[i-q])];
         vector<int> &arr = hashED[cur1];
-        if (arr.empty() || arr.back() != IDLine) arr.push_back(IDLine);
+        if (arr.empty() || arr.back() != lineNum) arr.push_back(lineNum);
     }
 }
 
-void SimSearcher::createJCD(int IDLine, const char * s) {
-    int ssize = inputLen[IDLine], sum = 0;
+void SimSearcher::createJCD(int lineNum, const char * s) {
+    int ssize = inputLen[lineNum], sum = 0;
     vector<int> iList;
     vector<int> empty;
     iList.clear();
@@ -155,8 +157,8 @@ void SimSearcher::createJCD(int IDLine, const char * s) {
                 listJCD.push_back(empty);
             }
             vector<int> &arr = listJCD[tmpI];
-            if (arr.empty() || arr.back() != IDLine) {
-                arr.push_back(IDLine);
+            if (arr.empty() || arr.back() != lineNum) {
+                arr.push_back(lineNum);
                 iList.push_back(tmpI);
                 ++sum;
             }
@@ -175,8 +177,8 @@ void SimSearcher::createJCD(int IDLine, const char * s) {
         listJCD.push_back(empty);
     }
     vector<int> &arr = listJCD[tmpI];
-    if (arr.empty() || arr.back() != IDLine) {
-        arr.push_back(IDLine);
+    if (arr.empty() || arr.back() != lineNum) {
+        arr.push_back(lineNum);
         iList.push_back(tmpI);
         ++sum;
     }
