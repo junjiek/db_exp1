@@ -102,7 +102,7 @@ double SimSearcher::calJCD(int index, double thershold) {
     return (double)intersec / (q + bsize-j);
 }
 
-unsigned SimSearcher::calED(char *a, int thershold, int asize,int qSiz,char* Query) {
+unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qSiz, const char* Query) {
     int length = qSiz;
     if (abs(asize-length)>thershold) return thershold+1;
     int mm[1024];
@@ -127,10 +127,8 @@ unsigned SimSearcher::calED(char *a, int thershold, int asize,int qSiz,char* Que
     return mm[anspos];
 }
 
-void SimSearcher::createED(int IDLine, char *s) {
-    // cout << IDLine << endl <<  s << endl;
+void SimSearcher::createED(int IDLine, const char * s) {
     int length = inputLen[IDLine];
-
     if (length < q){miniStr.push_back(IDLine);return;}
     int cur1 = 0,i = 0;
     while(i < q) cur1 = cur1 * hashPara + s[i++];
@@ -142,7 +140,7 @@ void SimSearcher::createED(int IDLine, char *s) {
     }
 }
 
-void SimSearcher::createJCD(int IDLine, char *s) {
+void SimSearcher::createJCD(int IDLine, const char * s) {
     int ssize = inputLen[IDLine], sum = 0;
     vector<int> iList;
     vector<int> empty;
@@ -196,34 +194,26 @@ void SimSearcher::hash_init() {
 
 int SimSearcher::createIndex(const char *filename, unsigned q) {
     this -> q = q;
-    FILE *fp = fopen(filename, "r");
     hash_init();
-    int lineNum = 0;
-    int tot = 0;
-    while (1)
-    {
-        aLine = (char*)malloc(3000);
-        tot = 0;
-        if (fscanf(fp, "%c", &ch) != 1) break;
-        while (ch != '\n')
-        {
-            aLine[tot++] = ch;
-            if(fscanf(fp, "%c", &ch)!=1) break;
-        }
-        aLine[tot] = 0;//"\0"?
-        dataStr.push_back(aLine);
-        inputLen.push_back(tot);
-        createED(lineNum, aLine);
-        createJCD(lineNum, aLine);
-        lineNum++;
-    }
-
-    visitor.resize(lineNum);
+    ifstream fin(filename);
+    string line;
+    char * buf;
+    while (getline(fin, line)) {
+        inputLen.push_back((int)line.length());
+        int lineNum = dataStr.size();
+        buf = (char*)malloc(1000);
+        strcpy(buf, line.c_str()); 
+        dataStr.push_back(buf);
+        createED(lineNum, buf);
+        createJCD(lineNum, buf);
+    };
+    fin.close();
+    visitor.resize(dataStr.size());
     return SUCCESS;
 
 }
 
-void SimSearcher::EDSets(int qSiz,char* Query){
+void SimSearcher::EDSets(int qSiz, const char* Query){
     data.clear();
     querySize = qSiz + 1 - q;
     if (qSiz < q) return;
@@ -238,7 +228,7 @@ void SimSearcher::EDSets(int qSiz,char* Query){
             data.push_back(&(it->second));
     }
 }
-void SimSearcher::JCDSets(int qSiz,char* Query) {
+void SimSearcher::JCDSets(int qSiz, const char* Query) {
     data.clear();
     querySize = 0;
     otherWord = 0;
@@ -319,13 +309,13 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     result.clear();
     new_index.clear();
     int qSiz = strlen(query);
-    char* Query = (char*)query;
-    EDSets(qSiz,Query);
+    // char* Query = (char*)query;
+    EDSets(qSiz,query);
     mergeskip(querySize-threshold*q, threshold,qSiz);//MERGE
     int size = miniStr.size();
     for (int i = new_index.size()-1; i >= 0; --i) {
         int tmpI = new_index[i];
-        unsigned tmpU = calED(dataStr[tmpI], threshold, inputLen[tmpI],qSiz,Query);
+        unsigned tmpU = calED(dataStr[tmpI], threshold, inputLen[tmpI],qSiz,query);
         if (tmpU <= threshold)
             result.push_back(make_pair(tmpI, tmpU));
     }
@@ -333,7 +323,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
         int tmp1 = miniStr[j];
         //if (abs(len[tmpI]-sQuerysize)<=threshold)
         {
-            unsigned tmp2 = calED(dataStr[tmp1], threshold, inputLen[tmp1],qSiz,Query);
+            unsigned tmp2 = calED(dataStr[tmp1], threshold, inputLen[tmp1],qSiz,query);
             if (tmp2 <= threshold)
                 result.push_back(make_pair(tmp1, tmp2));
         }

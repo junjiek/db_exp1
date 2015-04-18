@@ -22,13 +22,13 @@ private:
 
 	void hash_init();
 	double calJCD(int ind, double ths);
-	unsigned calED(char *a, int thershold, int asize,int qSiz,char* Query);
-	void createED(int lineID, char *s);
-	void createJCD(int lineID, char *s);
+	unsigned calED(const char *a, int thershold, int asize,int qSiz, const char* Query);
+	void createED(int lineID, const char* s);
+	void createJCD(int lineID, const char* s);
 	void defsort(int h, int t, int num);
 	void mergeskip(int T, int thershold,int qSiz);
-	void EDSets(int qSiz,char* Query);
-	void JCDSets(int qSiz,char* Query);
+	void EDSets(int qSiz, const char* Query);
+	void JCDSets(int qSiz, const char* Query);
 	void print_vec_vec_int(vector<vector<int> >);
 
 	vector<vector<int>*> data;
@@ -36,7 +36,7 @@ private:
 	vector<vector<int> > listJCD;
 
 	vector<int> miniStr;
-	vector<char*> dataStr;
+	vector<const char*> dataStr;
 	vector<int> inputLen;
 	vector<int> visitor;
 	vector<int> new_index;
