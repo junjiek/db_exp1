@@ -13,13 +13,13 @@
 using namespace std;
 
 int wordExis[MAXN][BUFSIZE];
-int wordIndx[MAXN];
+int wordCount[MAXN];
 int visit[MAXN];
 
 SimSearcher::SimSearcher() {
     minSubStrSize = INT_MAX;
     wordNum = 0;
-    memset(wordIndx, -1, sizeof(wordIndx));
+    memset(wordCount, -1, sizeof(wordCount));
     itemNum = 1;
     dataStr.clear();
     hashED.clear();
@@ -79,7 +79,7 @@ void SimSearcher::mergeskip(int T, int thershold, int qLen) {
     }
 }
 double SimSearcher::calJac(int index, double thershold) {
-    vector<int> &temp = indexJac[index];
+    vector<int> &temp = wordIdxJac[index];
     int length = temp.size(), bsize = querySize;
     if (length * thershold > bsize || bsize * thershold > length) return 0;
     int intersec = 0, q = otherWord + length;
@@ -144,12 +144,12 @@ void SimSearcher::createJac(int lineNum, const char * str) {
     int subStrSize = 0;
     while(i < lineLen[lineNum]) {
         if (str[i] == ' ') {
-            int &tmpI = wordIndx[current];
+            int &tmpI = wordCount[current];
             if (tmpI == -1) {
                 tmpI = wordNum++;
-                listJac.push_back(empty);
+                invertedListJac.push_back(empty);
             }
-            vector<int> &arr = listJac[tmpI];
+            vector<int> &arr = invertedListJac[tmpI];
             if (arr.empty() || arr.back() != lineNum) {
                 arr.push_back(lineNum);
                 iList.push_back(tmpI);
@@ -164,12 +164,12 @@ void SimSearcher::createJac(int lineNum, const char * str) {
         }
         ++i;
     }
-    int &tmpI = wordIndx[current];
+    int &tmpI = wordCount[current];
     if (tmpI == -1) {
         tmpI = wordNum++;
-        listJac.push_back(empty);
+        invertedListJac.push_back(empty);
     }
-    vector<int> &arr = listJac[tmpI];
+    vector<int> &arr = invertedListJac[tmpI];
     if (arr.empty() || arr.back() != lineNum) {
         arr.push_back(lineNum);
         iList.push_back(tmpI);
@@ -177,7 +177,7 @@ void SimSearcher::createJac(int lineNum, const char * str) {
     }
     if (minSubStrSize > subStrSize) minSubStrSize = subStrSize;
     sort(iList.begin(), iList.end());
-    indexJac.push_back(iList);
+    wordIdxJac.push_back(iList);
 }
 
 inline int mypow(int x, int y) {
@@ -246,9 +246,9 @@ void SimSearcher::getListsJac(int qLen, const char* query) {
     //cout << squery << endl;
     for (int i = 0; i < qLen; ++i) {
         if (query[i] == ' ') {
-            int num = wordIndx[current];
+            int num = wordCount[current];
             if (!find && num != -1) {
-                data.push_back(&listJac[num]);
+                data.push_back(&invertedListJac[num]);
                 if (visit[num] != times) {
                     visit[num] = times;
                     queryCnt.push_back(num);
@@ -272,9 +272,9 @@ void SimSearcher::getListsJac(int qLen, const char* query) {
         }
     }
     {
-        int num = wordIndx[current];
+        int num = wordCount[current];
         if (!find && num != -1) {
-            data.push_back(&listJac[num]);
+            data.push_back(&invertedListJac[num]);
             if (visit[num] != times) {
                 visit[num] = times;
                 queryCnt.push_back(num);

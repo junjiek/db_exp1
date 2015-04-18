@@ -17,7 +17,6 @@ class SimSearcher{
 private:
 	int editDistance(const char* s1, const char* s2, int len1, int len2, int threshold);
 	map<string, vector<pair<unsigned, unsigned>>> indexEDis;
-	map<string, vector<unsigned>> indexJacc;
 	int* intersection;
 	vector<int> wordNumPerID;
 
@@ -33,8 +32,8 @@ private:
 	void print_vec_vec_int(vector<vector<int> >);
 
 	vector<vector<int>*> data;
-	vector<vector<int> > indexJac;
-	vector<vector<int> > listJac;
+	vector<vector<int> > wordIdxJac;
+	vector<vector<int> > invertedListJac;
 
 	vector<int> smallStr;
 	vector<const char*> dataStr;
