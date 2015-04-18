@@ -10,6 +10,8 @@
 
 using namespace std;
 
+clock_t start, finish;
+
 void SimSearcher::generateGramED(string &s, unsigned line_num) {
     if (s.length() < q)
         return;
@@ -58,11 +60,6 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
         words.push_back(str);
     };
 
-    // sort the grams' lists
-    for (auto & i : gramMapED)
-        i.second.sort();
-    for (auto & i : gramMapJac)
-        i.second.sort();
     return (gramMapED.empty() || gramMapJac.empty()) ? FAILURE : SUCCESS;
 }
 
@@ -109,29 +106,82 @@ public:
     }
 };
 
-void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
-                             map<int, int> &rawResult, int T) {
-    //sort q-grams by length in the descending order
-    sort(list.begin(), list.end(), list_Compare);
+// void SimSearcher::mergeSkip(const char *query, unsigned threshold, int shortNum) {
+//     // pair: <recordID, possible list ID>
+//     priority_queue<pair<unsigned, unsigned>, vector<pair<unsigned, unsigned>>,
+//                         heapCompare> heap;
+//     poppedLists.clear();
+//     shortResult.clear();
 
-    //get the L longest lists
-    int L = min((double(T)) / (U * log((double)(*(list.back())).size()) + 1),
-                double(T - 1));
-    vector<InvertedList *> longList;
-    for (int i = 0; i < L && !list.empty(); ++ i) {
-        longList.push_back(list.back());
-        list.pop_back();
-    }
+//     unsigned topVal;
+//     headPos.clear();
+//     headPos.resize(sortGramList.size());
+
+//     // Initialize the heap
+//     for (int i = 0; i < shortNum; ++i)
+//         heap.push(make_pair(sortGramList[possibleList[i]].getList().front(), possibleList[i]));
+
+//     // MergeSkip 
+//     while (!heap.empty()) {
+//         topVal = heap.top().first;
+//         unsigned count = 0;
+//         poppedLists.clear();
+//         // Pop all the same value on the top
+//         while (!heap.empty() && heap.top().first == topVal) {
+//             ++count;
+//             poppedLists.push_back(heap.top());
+//             heap.pop();
+//         }
+//         // Appear more than threshold times Select as a candidate
+//         if (count >= threshold) {
+//             shortResult.insert(topVal);
+//             countID[topVal] = count;
+//             vector<pair<unsigned, unsigned>>::iterator it = poppedLists.begin();
+//             while (it != poppedLists.end()) {
+//                 vector<unsigned> &currList = sortGramList[it->second].getList();
+//                 if (++headPos[it->second] < currList.size()) {
+//                     heap.push(make_pair(currList[headPos[it->second]], it->second));
+//                 }
+//                 ++it;
+//             }
+//         }
+//         // Pop impossible ones
+//         else {
+//             for (int i = 0; !heap.empty() && i < (int)(threshold - 1 - count); ++i) {
+//                 poppedLists.push_back(heap.top());
+//                 heap.pop();
+//             }
+//             if (heap.empty())
+//                 break;
+            
+//             topVal = heap.top().first;
+//             vector<pair<unsigned, unsigned>>::iterator it(poppedLists.begin());
+//             while (it != poppedLists.end()) {
+//                 vector<unsigned> &currList = sortGramList[it->second].getList();
+//                 // Jump to the smallest record whose value >= heap top
+//                 vector<unsigned>::iterator findRes = lower_bound(currList.begin(), currList.end(), topVal);
+//                 if (findRes != currList.end()) {
+//                     heap.push(make_pair(*findRes, it->second));
+//                 }
+//                 headPos[it->second] = findRes - currList.begin();
+//                 ++it;
+//             }
+//         }
+//     }
+// }
+
+void SimSearcher::mergeSkip(vector<InvertedList *> &shortLists, int shortNum,
+                            vector<pair<int, int>> & candidates) {
 
     //initialize the priority queue
     priority_queue<pair<vector<int>::iterator, vector<int>::iterator>,
                    vector<pair<vector<int>::iterator, vector<int>::iterator>>,
                    Pair_Compare> heap;
-    for (auto & i : list)
+    for (auto & i : shortLists)
         heap.push(make_pair(i->getList().begin(), i->getList().end()));
-
+    
     //use MergeSkip to find ids that appear >= (T - L) times in the short lists
-    while(heap.size() >= T - L) {
+    while(heap.size() >= shortNum) {
         vector<pair<vector<int>::iterator, vector<int>::iterator> > t;
         t.push_back(heap.top());
         heap.pop();
@@ -145,23 +195,15 @@ void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
         }
 
         int appearance = t.size();
-        if (appearance >= (T - L)) {
-            // calculate times of appearance in the L long lists.
-            for (auto & i : longList)
-                if (i->hasKey(*(t[0].first)))
-                    ++ appearance;
-
-            // if total appearance times >= T, add to result.
-            if (appearance >= T)
-                rawResult[*(t[0].first)] = appearance;
-
+        if (appearance >= shortNum) {
+            candidates.push_back(make_pair(*(t[0].first), appearance));
             // push next record on each popped list to the priority queue.
             for (auto & i : t)
                 if ((i.first + 1) != i.second)
                     heap.push(make_pair(i.first + 1, i.second));
-        } else if (heap.size() >= (T - L - appearance)) {
+        } else if (heap.size() >= (shortNum - appearance)) {
             // pop another (T-L-1-appearance) smallest records from the priority queue.
-            for (int i = 0; i < T - L - 1 - appearance; ++ i) {
+            for (int i = 0; i < shortNum - 1 - appearance; ++ i) {
                 t.push_back(heap.top());
                 heap.pop();
             }
@@ -178,29 +220,71 @@ void SimSearcher::divideSkip(string &query, vector<InvertedList *> &list,
     }
 }
 
-void SimSearcher::filterED(string &query, map<int, int> &rawResult, int T) {
+void SimSearcher::mergeOpt(vector<InvertedList*> &longList,
+                           vector<pair<int, int>>& candidates, int T) {
+    // calculate times of appearance in the L long lists.
+    for (auto& pair : candidates) {
+        int cnt = pair.second;
+        for (auto & i : longList)
+            if (i->hasKey(pair.first))
+                ++ cnt;
+
+        // if total appearance times >= T, add to result.
+        if (cnt >= T)
+            rawResult.insert(pair.first);
+    }
+
+}
+
+void SimSearcher::divideSkip(vector<InvertedList *> &list, int T) {
+    //sort q-grams by length in the descending order
+    sort(list.begin(), list.end(), list_Compare);
+    //get the L longest lists
+    int L = min((double(T)) / (U * log((double)(*(list.back())).size()) + 1),
+                double(T - 1));
+    vector<InvertedList *> longList;
+    start = clock();
+    for (int i = 0; i < L && !list.empty(); ++ i) {
+        longList.push_back(list.back());
+        list.pop_back();
+    }
+    vector<pair<int, int>> candidates;
+    // start = clock();
+    mergeSkip(list, T-L, candidates);
+    // finish = clock();
+    // printf("divideSkip: %.2lfs\n", (finish-start)/1000.0);
+    // start = clock();
+
+    mergeOpt(longList, candidates, T);
+    // finish = clock();
+    // printf("mergeOpt: %.2lfs\n", (finish-start)/1000.0);
+
+    
+}
+
+void SimSearcher::filterED(string &query, int T) {
     vector<InvertedList *> list;
     rawResult.clear();
     if (T != 0 && query.length() >= q) {
         getQueryGramListED(query, list);
-        divideSkip(query, list, rawResult, T);
+        divideSkip(list, T);
     } else {
         // when (T == 0 || query.length() < q) calculate directly.
         for (int i = 0; i < words.size(); ++ i)
-            rawResult[i] = 0;
+            rawResult.insert(i);
     }
 }
 
-void SimSearcher::filterJac(string &query, map<int, int> &rawResult, int T) {
+void SimSearcher::filterJac(string &query, int T) {
     vector<InvertedList *> list;
     rawResult.clear();
     if (T != 0 && query.length() >= q) {
         getQueryGramListJac(query, list);
-        divideSkip(query, list, rawResult, T);
+        divideSkip(list, T);
     } else {
         // when (T == 0 || query.length() < q) calculate directly.
         for (int i = 0; i < words.size(); ++ i)
-            rawResult[i] = 0;
+            rawResult.insert(i);
     }
 }
 
@@ -323,14 +407,13 @@ int SimSearcher::searchJaccard(const char *query, double threshold,
 
     //get the raw result
     string queryStr(query);
-    map<int, int> rawResult;
-    filterJac(queryStr, rawResult, jaccardT(threshold));
+    filterJac(queryStr, jaccardT(threshold));
 
     //eliminate false positive
     for (auto & i : rawResult) {
-        double dis = jaccardDist(words[i.first]);
+        double dis = jaccardDist(words[i]);
         if (dis >= threshold)
-            result.push_back(make_pair(i.first, dis));
+            result.push_back(make_pair(i, dis));
     }
 
     return SUCCESS;
@@ -343,14 +426,13 @@ int SimSearcher::searchED(const char *query, unsigned threshold,
 
     //get the raw result
     string queryStr(query);
-    map<int, int> rawResult;
-    filterED(queryStr, rawResult, edT(queryStr, threshold));
+    filterED(queryStr, edT(queryStr, threshold));
 
     //eliminate the false positives
     for (auto & i : rawResult) {
-        unsigned dis = levenshteinDist(words[i.first], query, threshold);
+        unsigned dis = levenshteinDist(words[i], query, threshold);
         if (dis <= threshold)
-            result.push_back(make_pair(i.first, dis));
+            result.push_back(make_pair(i, dis));
     }
 
     return SUCCESS;

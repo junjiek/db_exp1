@@ -21,6 +21,7 @@ private:
     unordered_map<string, Gram> gramMapED;
     unordered_map<string, Gram> gramMapJac;
     unordered_set<string> querySubStr;
+    unordered_set<int> rawResult;
 
     void setQ(int qq) { q = qq; }
     void generateGramED(string &s, unsigned line_num);
@@ -34,11 +35,13 @@ private:
     // get the lists of grams for the query
     void getQueryGramListED(string &query, vector<InvertedList *> &list);
     void getQueryGramListJac(string &query, vector<InvertedList *> &list);
-    void filterED(string &query, map<int, int> &rawResult, int T);
-    void filterJac(string &query, map<int, int> &rawResult, int T);
-    void divideSkip(string &query, vector<InvertedList *> &list,
-                    map<int, int> &rawResult, int T);
-
+    void filterED(string &query, int T);
+    void filterJac(string &query, int T);
+    void divideSkip(vector<InvertedList *> &list, int T);
+    void mergeSkip(vector<InvertedList *> &shortLists, int shortNum,
+                   vector<pair<int, int>> & candidates);
+    void mergeOpt(vector<InvertedList*> &longList,
+                  vector<pair<int, int>>& candidates, int T); 
     // Calculate real dist to verify
     int levenshteinDist(string s, string t, int threshold);
     double jaccardDist(string &w);
