@@ -116,24 +116,24 @@ unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qLen, co
     return mm[anspos];
 }
 
-void SimSearcher::createED(int lineNum, const char * s) {
+void SimSearcher::createED(int lineNum, const char * str) {
     if (lineLen[lineNum] < q) {
         smallStr.push_back(lineNum);
         return;
     }
     int hashCode = 0;
     for (int i = 0; i < q; i++) {
-        hashCode = hashCode * HASH + s[i];
+        hashCode = hashCode * HASH + str[i];
     }
     hashED[hashCode].push_back(lineNum);
     for (int i = q; i < lineLen[lineNum]; i++) {
-        hashCode = hashCode * HASH + s[i] - n_Hashq[(unsigned)(s[i-q])];
+        hashCode = hashCode * HASH - n_Hashq[(int)(str[i-q])] + str[i];
         vector<int> &arr = hashED[hashCode];
         if (arr.empty() || arr.back() != lineNum) arr.push_back(lineNum);
     }
 }
 
-void SimSearcher::createJCD(int lineNum, const char * s) {
+void SimSearcher::createJCD(int lineNum, const char * str) {
     int ssize = lineLen[lineNum], sum = 0;
     vector<int> iList;
     vector<int> empty;
@@ -141,7 +141,7 @@ void SimSearcher::createJCD(int lineNum, const char * s) {
     empty.clear();
     int current = 1,i = 0;
     while(i < ssize) {
-        if (s[i] == ' ') {
+        if (str[i] == ' ') {
             int &tmpI = wordIndx[current];
             if (tmpI == -1) {
                 tmpI = wordNum++;
@@ -155,7 +155,7 @@ void SimSearcher::createJCD(int lineNum, const char * s) {
             }
             current = 1;
         } else {
-            int to = s[i];
+            int to = str[i];
             int &next = wordExis[current][to];
             if (next == 0) next = ++itemNum;
             current = next;
@@ -218,16 +218,19 @@ void SimSearcher::getListsED(int qLen, const char* query) {
     querySize = qLen + 1 - q;
     if (qLen < q) return;
     int hashCode = 0;
-    for (int i = 0; i < q; ++i) {
+    for (int i = 0; i < q; i++) {
         hashCode = hashCode * HASH + query[i];
     }
-    unordered_map<int, vector<int>>::iterator it = hashED.find(hashCode);
-    if (it != hashED.end()) data.push_back(&(it->second));
-    for (int i = q; i < qLen; ++i) {
-        hashCode = hashCode * HASH + query[i] - n_Hashq[(unsigned)(query[i-q])];
-        unordered_map<int, vector<int>>::iterator it = hashED.find(hashCode);
-        if (it == hashED.end()) continue;
-            data.push_back(&(it->second));
+    unordered_map<int, vector<int>>::iterator iter = hashED.find(hashCode);
+    if (iter != hashED.end()) {
+        data.push_back(&(iter->second));
+    }
+    for (int i = q; i < qLen; i++) {
+        hashCode = hashCode * HASH - n_Hashq[(int)(query[i-q])] + query[i];
+        iter = hashED.find(hashCode);
+        if (iter != hashED.end()) {
+            data.push_back(&(iter->second));
+        }
     }
 }
 void SimSearcher::getListsJac(int qLen, const char* query) {
@@ -239,14 +242,12 @@ void SimSearcher::getListsJac(int qLen, const char* query) {
     ++times;
     bool find = false;
     //cout << squery << endl;
-    for (int i = 0; i < qLen; ++i)
+    for (int i = 0; i < qLen; ++i) {
         if (query[i] == ' ') {
             int num = wordIndx[current];
-            if (!find && num != -1)
-            {
+            if (!find && num != -1) {
                 data.push_back(&listJCD[num]);
-                if (visit[num] != times)
-                {
+                if (visit[num] != times) {
                     visit[num] = times;
                     queryCnt.push_back(num);
                 }
@@ -256,20 +257,18 @@ void SimSearcher::getListsJac(int qLen, const char* query) {
                 ++otherWord;
             current = 1;
             find = false;
-        }
-        else
-        {
+        } else {
             if (find)
                 continue;
             int to = query[i];
             int &next = wordExis[current][to];
-            if (next == 0)
-            {
+            if (next == 0) {
                 find = true;
                 continue;
             }
             current = next;
         }
+    }
     {
         int num = wordIndx[current];
         if (!find && num != -1) {
