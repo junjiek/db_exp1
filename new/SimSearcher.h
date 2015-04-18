@@ -36,7 +36,7 @@ private:
 	vector<vector<int> > listJCD;
 
 	vector<int> miniStr;
-	vector<char*> inputStr;
+	vector<char*> dataStr;
 	vector<int> inputLen;
 	vector<int> visitor;
 	vector<int> new_index;
@@ -47,7 +47,7 @@ private:
 	int otherWord;
 	int times;
 	int minSubStrSize;
-	int lineNum;
+	// int lineNum;
 	int q;
 	int querySize;
 	int leave;
