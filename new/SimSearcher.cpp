@@ -6,19 +6,15 @@
 #include <iostream>
 #include <cstring>
 #include <vector>
-#include <unordered_map>
+
 #include <unordered_set>
 #include <climits>
 
 using namespace std;
 
-
-
 int wordExis[MAXN][BUFSIZE];
 int wordIndx[MAXN];
 int visit[MAXN];
-
-unordered_map<int, vector<int>> hashED;
 
 SimSearcher::SimSearcher() {
     minSubStrSize = INT_MAX;
@@ -27,7 +23,7 @@ SimSearcher::SimSearcher() {
     itemNum = 1;
     dataStr.clear();
     hashED.clear();
-    miniStr.clear();
+    smallStr.clear();
 }
 
 SimSearcher::~SimSearcher() {}
@@ -55,10 +51,10 @@ void SimSearcher::defsort(int from, int to, int length) {
 void SimSearcher::mergeskip(int T, int thershold, int qSiz) {
     if (T < 1) {
         int j = dataStr.size() - 1;
-        for (int i = miniStr.size()-1; i >= 0; --i) {
-            for (int k = j; k > miniStr[i]; --k)
+        for (int i = smallStr.size()-1; i >= 0; --i) {
+            for (int k = j; k > smallStr[i]; --k)
                 if (abs(lineLen[k]-qSiz) <= thershold) new_index.push_back(k);
-            j = miniStr[i] - 1;
+            j = smallStr[i] - 1;
         }
         for (int k = j; k >= 0; --k)
             if (abs(lineLen[k]-qSiz)<=thershold) new_index.push_back(k);
@@ -121,9 +117,8 @@ unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qSiz, co
 }
 
 void SimSearcher::createED(int lineNum, const char * s) {
-    int length = lineLen[lineNum];
-    if (length < q) {
-        miniStr.push_back(lineNum);
+    if (lineLen[lineNum] < q) {
+        smallStr.push_back(lineNum);
         return;
     }
     int hashCode = 0;
@@ -131,8 +126,8 @@ void SimSearcher::createED(int lineNum, const char * s) {
         hashCode = hashCode * HASH + s[i];
     }
     hashED[hashCode].push_back(lineNum);
-    for (int i = q; i < length; i++) {
-        hashCode = hashCode * HASH + s[i] - hash_v[(unsigned)(s[i-q])];
+    for (int i = q; i < lineLen[lineNum]; i++) {
+        hashCode = hashCode * HASH + s[i] - n_Hashq[(unsigned)(s[i-q])];
         vector<int> &arr = hashED[hashCode];
         if (arr.empty() || arr.back() != lineNum) arr.push_back(lineNum);
     }
@@ -183,16 +178,23 @@ void SimSearcher::createJCD(int lineNum, const char * s) {
     indexJCD.push_back(iList);
 }
 
-void SimSearcher::hash_init() {
-    hash_v[1] = 1;
-    for (int i = 0; i < q; ++i) hash_v[1] = hash_v[1] * HASH;
-    hash_v[0] = 0;
-    for (int i = 2; i < BUFSIZE; ++i) hash_v[i] = hash_v[i-1]+hash_v[1];
+inline int mypow(int x, int y) {
+    int result = 1;
+    for (int i = 0; i < y; i ++)
+        result *= x;
+    return result;
+}
+
+void SimSearcher::prepareHash() {
+    int Hashq = mypow(HASH, q);
+    for (int n = 0; n < BUFSIZE; n++) {
+        n_Hashq[n] = n * Hashq;
+    }
 }
 
 int SimSearcher::createIndex(const char *filename, unsigned q) {
     this-> q = q;
-    hash_init();
+    prepareHash();
     ifstream fin(filename);
     string line;
     char * buf;
@@ -222,7 +224,7 @@ void SimSearcher::EDSets(int qSiz, const char* query){
     unordered_map<int, vector<int>>::iterator it = hashED.find(hashCode);
     if (it != hashED.end()) data.push_back(&(it->second));
     for (int i = q; i < qSiz; ++i) {
-        hashCode = hashCode * HASH + query[i] - hash_v[(unsigned)(query[i-q])];
+        hashCode = hashCode * HASH + query[i] - n_Hashq[(unsigned)(query[i-q])];
         unordered_map<int, vector<int>>::iterator it = hashED.find(hashCode);
         if (it == hashED.end()) continue;
             data.push_back(&(it->second));
@@ -311,7 +313,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     // char* query = (char*)query;
     EDSets(qSiz,query);
     mergeskip(querySize-threshold*q, threshold,qSiz);//MERGE
-    int size = miniStr.size();
+    int size = smallStr.size();
     for (int i = new_index.size()-1; i >= 0; --i) {
         int tmpI = new_index[i];
         unsigned tmpU = calED(dataStr[tmpI], threshold, lineLen[tmpI],qSiz,query);
@@ -319,7 +321,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
             result.push_back(make_pair(tmpI, tmpU));
     }
     for (int j = 0; j < size; ++j) {
-        int tmp1 = miniStr[j];
+        int tmp1 = smallStr[j];
         //if (abs(len[tmpI]-squerysize)<=threshold)
         {
             unsigned tmp2 = calED(dataStr[tmp1], threshold, lineLen[tmp1],qSiz,query);

@@ -2,6 +2,8 @@
 #include <vector>
 #include <utility>
 #include <map>
+#include <unordered_map>
+
 using namespace std;
 
 const int SUCCESS = 0;
@@ -16,14 +18,10 @@ private:
 	int editDistance(const char* s1, const char* s2, int len1, int len2, int threshold);
 	map<string, vector<pair<unsigned, unsigned>>> indexEDis;
 	map<string, vector<unsigned>> indexJacc;
-	// map<string,int> wordFre;
-	int data_size;
 	int* intersection;
-	//unsigned q11;
-	//vector<string> data;
 	vector<int> wordNumPerID;
 
-	void hash_init();
+	void prepareHash();
 	double calJCD(int ind, double ths);
 	unsigned calED(const char *a, int thershold, int asize,int qSiz, const char* Query);
 	void createED(int lineNum, const char* s);
@@ -38,7 +36,7 @@ private:
 	vector<vector<int> > indexJCD;
 	vector<vector<int> > listJCD;
 
-	vector<int> miniStr;
+	vector<int> smallStr;
 	vector<const char*> dataStr;
 	vector<int> lineLen;
 	vector<int> visitor;
@@ -55,7 +53,8 @@ private:
 	int leave;
 
 	int v[2][BUFSIZE];
-	int hash_v[BUFSIZE];
+	int n_Hashq[BUFSIZE];
+	unordered_map<int, vector<int>> hashED;
 
 public:
 	SimSearcher();
