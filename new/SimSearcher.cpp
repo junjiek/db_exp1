@@ -303,9 +303,9 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
     getListsJac(query);
     mergeskip(jaccardT(threshold), INT_MAX);
     for (int i = rawResult.size() - 1; i >= 0; i--) {
-        double tmpD = calDistJac(rawResult[i], threshold);
-        if (tmpD > threshold - EPS)
-            result.push_back(make_pair(rawResult[i], tmpD));
+        double jac = calDistJac(rawResult[i], threshold);
+        if (jac > threshold - EPS)
+            result.push_back(make_pair(rawResult[i], jac));
     }
     sort(result.begin(), result.end());
     return SUCCESS;
@@ -321,20 +321,18 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     qLen = strlen(query);
     getListsED(query);
     mergeskip(edT(threshold), threshold);
-    int size = smallStr.size();
     for (int i = rawResult.size() - 1; i >= 0; i--) {
         int idx = rawResult[i];
-        unsigned tmpU = calDistED(dataStr[idx], query, threshold);
-        if (tmpU <= threshold)
-            result.push_back(make_pair(idx, tmpU));
+        unsigned ed = calDistED(dataStr[idx], query, threshold);
+        if (ed <= threshold)
+            result.push_back(make_pair(idx, ed));
     }
-    for (int j = 0; j < size; j++) {
-        int tmp1 = smallStr[j];
-        //if (abs(len[idx]-squerysize)<=threshold)
-        {
-            unsigned tmp2 = calDistED(dataStr[tmp1], query, threshold);
-            if (tmp2 <= threshold)
-                result.push_back(make_pair(tmp1, tmp2));
+    for (int j = 0; j < (int)smallStr.size(); j++) {
+        int idx = smallStr[j];
+        //if (abs(len[idx]-squerysize)<=threshold) {
+            unsigned ed = calDistED(dataStr[idx], query, threshold);
+            if (ed <= threshold)
+                result.push_back(make_pair(idx, ed));
         }
     }
     sort(result.begin(), result.end());
