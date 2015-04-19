@@ -30,41 +30,45 @@ SimSearcher::~SimSearcher() {}
 
 void SimSearcher::mysort(int b, int e, int len) {
     int i = b, j = e;
-    unsigned k = rawResult[(b + e) >> 1]->size();
+    unsigned pivot = rawResult[(b + e)/2]->size();
     do {
-        while (rawResult[i]->size()>k) ++i;
-        while (rawResult[j]->size()<k) --j;
+        while (rawResult[i]->size() > pivot)
+            i++;
+        while (rawResult[j]->size() < pivot)
+            j--;
         if (i <= j) {
-            if (rawResult[i]->size() != rawResult[j]->size()) {
-                vector<int> *tmp = rawResult[i];
-                rawResult[i] = rawResult[j];
-                rawResult[j] = tmp;
-            }
-            ++i;
-            --j;
+            if (rawResult[i]->size() != rawResult[j]->size())
+                swap(rawResult[i], rawResult[j]);
+            i++;
+            j--;
         }
     } while (i <= j);
-    if (j > len) mysort(b, j, len);
-    if (len >= i) mysort(i, e, len);
+    if (j > len)
+        mysort(b, j, len);
+    if (i <= len)
+        mysort(i, e, len);
 }
 
-void SimSearcher::mergeskip(int T, int thershold, int qLen) {
+void SimSearcher::mergeskip(int T, int thershold) {
     if (T < 1) {
         int j = dataStr.size() - 1;
         for (int i = smallStr.size()-1; i >= 0; --i) {
             for (int k = j; k > smallStr[i]; --k)
-                if (abs(lineLen[k]-qLen) <= thershold) new_index.push_back(k);
+                if (abs(lineLen[k]-qLen) <= thershold)
+                    newIdx.push_back(k);
             j = smallStr[i] - 1;
         }
         for (int k = j; k >= 0; --k)
-            if (abs(lineLen[k]-qLen)<=thershold) new_index.push_back(k);
+            if (abs(lineLen[k]-qLen) <= thershold)
+                newIdx.push_back(k);
         return;
     }
     ++times;
     int occur = T1;
     int len = rawResult.size();
     leave = T - occur;
-    if (leave < len && leave > 0) mysort(0, len-1, leave - 1);
+    if (leave < len && leave > 0)
+        mysort(0, len-1, leave - 1);
     int i = leave;
     while(i < len) {
         vector<int> &curr = *(rawResult[i]);
@@ -72,51 +76,71 @@ void SimSearcher::mergeskip(int T, int thershold, int qLen) {
             int temp = curr[j];
             if (visitor[temp] != times) {
                 visitor[temp] = times;
-                if (abs(lineLen[temp] - qLen) <= thershold) new_index.push_back(temp);
+                if (abs(lineLen[temp] - qLen) <= thershold)
+                    newIdx.push_back(temp);
             }
         }
         i++;
     }
 }
-double SimSearcher::calJac(int index, double thershold) {
-    vector<int> &temp = wordIdxJac[index];
-    int length = temp.size(), bsize = querySize;
-    if (length * thershold > bsize || bsize * thershold > length) return 0;
+double SimSearcher::calDistJac(int index, double thershold) {
+    vector<int> &wordIdx = wordIdxJac[index];
+    int length = wordIdx.size(), bsize = querySize;
+    if (length * thershold > bsize || bsize * thershold > length)
+        return 0;
     int intersec = 0, q = otherWord + length;
-    int i= 0,j = 0;
-    while(i < length) {
-        while (temp[i] > queryCnt[j]) ++j, ++q;
-        if (temp[i++] == queryCnt[j]) ++intersec, ++j;
-    }
-    return (double)intersec / (q + bsize-j);
-}
-
-unsigned SimSearcher::calED(const char *a, int thershold, int asize,int qLen, const char* query) {
-    int length = qLen;
-    if (abs(asize-length)>thershold) return thershold+1;
-    int mm[1024];
-    int offset = thershold+1;
-    int lo = 1, hi = 2 * thershold + 1;
-    int anspos = length - asize + offset;
-    int i = 0;
-    while(i <= thershold + 1) {mm[offset - i] = mm[offset + i] = i;i++;}
-    for (int i = 0; i < asize; ++i) {
-        for (int j = lo; j <= hi; ++j) {
-            int x = mm[j-1] + 1;
-            int y = mm[j];
-            int z = mm[j+1] + 1;
-            int pos = i + j - offset;
-            if (pos < 0 || pos >= length || a[i] != query[pos]) ++y;
-            mm[j] = MIN(x,y,z);
+    int i = 0, j = 0;
+    while (i < length) {
+        while (wordIdx[i] > queryCnt[j]) {
+            ++j;
+            ++q;
         }
-        while (mm[lo] > thershold) ++lo;
-        while (mm[hi] > thershold) --hi;
-        if (lo > hi) return thershold+1;
+        if (wordIdx[i++] == queryCnt[j]) {
+            ++intersec;
+            ++j;
+        }
     }
-    return mm[anspos];
+    return (double)intersec / (q + bsize - j);
 }
 
-void SimSearcher::createED(int lineNum, const char * str) {
+unsigned SimSearcher::calDistED(const char *s, const char *t, int threshold) {
+    static int distance[BUFSIZE][BUFSIZE];
+    int slen(strlen(s)), tlen(strlen(t));
+    if (abs(slen - tlen) > threshold)
+        return INT_MAX;
+
+    for (int i = 0; i <= slen; ++i)
+        distance[i][0] = i;
+    for (int i = 0; i <= tlen; ++i)
+        distance[0][i] = i;
+
+    int minDist = threshold + 1;
+    for (int i = 1; i <= slen; ++i) {
+        int l = max(1, i - threshold);
+        int r = min(tlen, i + threshold);
+        minDist = threshold + 1;
+        for (int j = l; j <= r; ++j) {
+            if (s[i - 1] == t[j - 1])
+                distance[i][j] = distance[i - 1][j - 1];
+            else
+                distance[i][j] = distance[i - 1][j - 1] + 1;
+            
+            if (abs(i - 1 - j) <= threshold && distance[i][j] > distance[i - 1][j] + 1)
+                distance[i][j] = distance[i - 1][j] + 1;
+            if (abs(j - 1 - i) <= threshold && distance[i][j] > distance[i][j - 1] + 1)
+                distance[i][j] = distance[i][j - 1] + 1;
+            
+        if (distance[i][j] < minDist)
+            minDist = distance[i][j];
+        }
+        if (minDist > threshold)
+            return INT_MAX;
+    }
+    return distance[slen][tlen]; 
+}
+
+
+void SimSearcher::createED(const char * str, int lineNum) {
     if (lineLen[lineNum] < q) {
         smallStr.push_back(lineNum);
         return;
@@ -135,7 +159,7 @@ void SimSearcher::createED(int lineNum, const char * str) {
     }
 }
 
-void SimSearcher::createJac(int lineNum, const char * str) {
+void SimSearcher::createJac(const char * str, int lineNum) {
     vector<int> wordIdx;
     wordIdx.clear();
     int curr = 0;
@@ -200,8 +224,8 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
         buf = (char*)malloc(1000);
         strcpy(buf, line.c_str()); 
         dataStr.push_back(buf);
-        createED(lineNum, buf);
-        createJac(lineNum, buf);
+        createED(buf, lineNum);
+        createJac(buf, lineNum);
     };
     fin.close();
     visitor.resize(dataStr.size());
@@ -209,7 +233,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 
 }
 
-void SimSearcher::getListsED(int qLen, const char* query) {
+void SimSearcher::getListsED(const char* query) {
     rawResult.clear();
     querySize = qLen + 1 - q;
     if (qLen < q) return;
@@ -229,15 +253,13 @@ void SimSearcher::getListsED(int qLen, const char* query) {
         }
     }
 }
-void SimSearcher::getListsJac(int qLen, const char* query) {
+void SimSearcher::getListsJac(const char* query) {
     rawResult.clear();
-    querySize = 0;
     otherWord = 0;
     queryCnt.clear();
     int curr = 0;
     ++times;
     bool find = false;
-    //cout << squery << endl;
     for (int i = 0; i < qLen; ++i) {
         if (query[i] == ' ') {
             int num = globalWordIdx[curr];
@@ -282,36 +304,37 @@ void SimSearcher::getListsJac(int qLen, const char* query) {
     queryCnt.push_back(INT_MAX);
 }
 
-int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<unsigned, double> > &result) {
-    //cout << "jaccard" << endl;
-    result.clear();
-    new_index.clear();
-    int qLen = strlen(query);
-    getListsJac(qLen,query);
+int SimSearcher::jaccardT(double threshold) {
+    return max(querySize * threshold,
+           (querySize + minSubStrSize) * threshold / (1 + threshold));
 
-    mergeskip(ceil(fmax(threshold*querySize, (querySize+minSubStrSize)*threshold/(1+threshold))), INT_MAX,qLen);
-    for (int i = new_index.size()-1; i >= 0; --i) {
-        double tmpD = calJac(new_index[i], threshold);
-        //cout << filter[i] << ":" << tmpD << endl;
-        if (tmpD > threshold - 1e-8)
-            result.push_back(make_pair(new_index[i], tmpD));
+}
+
+int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<unsigned, double> > &result) {
+    result.clear();
+    newIdx.clear();
+    qLen = strlen(query);
+    getListsJac(query);
+    mergeskip(jaccardT(threshold), INT_MAX);
+    for (int i = newIdx.size()-1; i >= 0; --i) {
+        double tmpD = calDistJac(newIdx[i], threshold);
+        if (tmpD > threshold - EPS)
+            result.push_back(make_pair(newIdx[i], tmpD));
     }
     sort(result.begin(), result.end());
     return SUCCESS;
 }
 
 int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<unsigned, unsigned> > &result) {
-    //cout << "ed" << endl;
     result.clear();
-    new_index.clear();
-    int qLen = strlen(query);
-    // char* query = (char*)query;
-    getListsED(qLen, query);
-    mergeskip(querySize-threshold*q, threshold,qLen);//MERGE
+    newIdx.clear();
+    qLen = strlen(query);
+    getListsED(query);
+    mergeskip(querySize-threshold*q, threshold);
     int size = smallStr.size();
-    for (int i = new_index.size()-1; i >= 0; --i) {
-        int idx = new_index[i];
-        unsigned tmpU = calED(dataStr[idx], threshold, lineLen[idx],qLen,query);
+    for (int i = newIdx.size()-1; i >= 0; --i) {
+        int idx = newIdx[i];
+        unsigned tmpU = calDistED(dataStr[idx], query, threshold);
         if (tmpU <= threshold)
             result.push_back(make_pair(idx, tmpU));
     }
@@ -319,7 +342,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
         int tmp1 = smallStr[j];
         //if (abs(len[idx]-squerysize)<=threshold)
         {
-            unsigned tmp2 = calED(dataStr[tmp1], threshold, lineLen[tmp1],qLen,query);
+            unsigned tmp2 = calDistED(dataStr[tmp1], query, threshold);
             if (tmp2 <= threshold)
                 result.push_back(make_pair(tmp1, tmp2));
         }
