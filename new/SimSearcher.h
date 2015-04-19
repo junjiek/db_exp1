@@ -27,19 +27,16 @@ private:
     vector<int> rawResult;
     vector<int> queryIdx;
 
+    int q;
     int letterNum;
     int wordNum;
     int times;
     int minSubStrSize;
-    int q;
     int querySize;
-    int leave;
     int qLen;
     int n_Hashq[BUFSIZE];
     unordered_map<int, vector<int>> hashED;
-    map<string, vector<pair<unsigned, unsigned>>> indexEDis;
     int* intersection;
-    vector<int> wordNumPerID;
 
     void prepareHash();
     double calDistJac(int ind, double threshold);

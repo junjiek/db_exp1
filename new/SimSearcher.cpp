@@ -176,7 +176,8 @@ void SimSearcher::createJac(const char * str, int lineNum) {
             }
             // The word appear first time in str
             int idx = globalWordIdx[curr];
-            if (invertedListJac[idx].empty() || invertedListJac[idx].back() != lineNum) {
+            if (invertedListJac[idx].empty() ||
+                invertedListJac[idx].back() != lineNum) {
                 invertedListJac[idx].push_back(lineNum);
                 wordIdx.push_back(idx);
                 subStrSize ++;
@@ -258,6 +259,7 @@ void SimSearcher::getListsJac(const char* query) {
     int newWord = 0;
     queryIdx.clear();
     int curr = 0;
+
     times++;
     bool find = false;
     for (int i = 0; i <= qLen; ++i) {
@@ -292,7 +294,7 @@ void SimSearcher::getListsJac(const char* query) {
 
 int SimSearcher::jaccardT(double threshold) {
     return max(querySize * threshold,
-           (querySize + minSubStrSize) * threshold / (1 + threshold));
+               (querySize + minSubStrSize) * threshold / (1 + threshold));
 
 }
 
