@@ -28,62 +28,6 @@ SimSearcher::SimSearcher() {
 
 SimSearcher::~SimSearcher() {}
 
-void SimSearcher::mysort(int b, int e, int len) {
-    int i = b, j = e;
-    unsigned pivot = possibleLists[(b + e)/2]->size();
-    do {
-        while (possibleLists[i]->size() > pivot)
-            i++;
-        while (possibleLists[j]->size() < pivot)
-            j--;
-        if (i <= j) {
-            if (possibleLists[i]->size() != possibleLists[j]->size())
-                swap(possibleLists[i], possibleLists[j]);
-            i++;
-            j--;
-        }
-    } while (i <= j);
-    if (j > len)
-        mysort(b, j, len);
-    if (i <= len)
-        mysort(i, e, len);
-}
-
-void SimSearcher::mergeskip(int T, int thershold) {
-    if (T  == 0) {
-        int j = dataStr.size() - 1;
-        for (int i = smallStr.size()-1; i >= 0; --i) {
-            for (int k = j; k > smallStr[i]; --k)
-                if (abs(lineLen[k] - qLen) <= thershold)
-                    rawResult.push_back(k);
-            j = smallStr[i] - 1;
-        }
-        for (int k = j; k >= 0; --k)
-            if (abs(lineLen[k]-qLen) <= thershold)
-                rawResult.push_back(k);
-        return;
-    }
-    ++times;
-    int occur = T1;
-    int len = possibleLists.size();
-    leave = T - occur;
-    if (leave < len && leave > 0)
-        mysort(0, len-1, leave - 1);
-    int i = leave;
-    while(i < len) {
-        vector<int> &curr = *(possibleLists[i]);
-        for (int j = curr.size() - 1; j >= 0; --j) {
-            int temp = curr[j];
-            if (visitor[temp] != times) {
-                visitor[temp] = times;
-                if (abs(lineLen[temp] - qLen) <= thershold)
-                    rawResult.push_back(temp);
-            }
-        }
-        i++;
-    }
-}
-
 double SimSearcher::calDistJac(int index, double thershold) {
     vector<int> &wordIdx = wordIdxJac[index];
     int dataSize = wordIdx.size();
@@ -292,6 +236,56 @@ void SimSearcher::getListsJac(const char* query) {
     queryIdx.push_back(INT_MAX);
 }
 
+void SimSearcher::mysort(int b, int e, int len) {
+    int i = b, j = e;
+    unsigned pivot = possibleLists[(b + e)/2]->size();
+    do {
+        while (possibleLists[i]->size() > pivot)
+            i++;
+        while (possibleLists[j]->size() < pivot)
+            j--;
+        if (i <= j) {
+            if (possibleLists[i]->size() != possibleLists[j]->size())
+                swap(possibleLists[i], possibleLists[j]);
+            i++;
+            j--;
+        }
+    } while (i <= j);
+    if (j > len)
+        mysort(b, j, len);
+    if (i <= len)
+        mysort(i, e, len);
+}
+
+void SimSearcher::mergeskip(int T, int threshold) {
+    if (T  == 0) {
+        for (int i = 0; i < dataStr.size(); i++) {
+            if(abs(lineLen[i] - qLen) <= threshold)
+                rawResult.push_back(i);
+        }
+        return;
+    }
+    ++times;
+    int occur = T1;
+    int len = possibleLists.size();
+    int leave = T - occur;
+    if (leave < len && leave > 0)
+        mysort(0, len-1, leave - 1);
+    int i = leave;
+    while(i < len) {
+        vector<int> &curr = *(possibleLists[i]);
+        for (int j = curr.size() - 1; j >= 0; --j) {
+            int temp = curr[j];
+            if (visitor[temp] != times) {
+                visitor[temp] = times;
+                if (abs(lineLen[temp] - qLen) <= threshold)
+                    rawResult.push_back(temp);
+            }
+        }
+        i++;
+    }
+}
+
 int SimSearcher::jaccardT(double threshold) {
     return max(querySize * threshold,
                (querySize + minSubStrSize) * threshold / (1 + threshold));
@@ -338,4 +332,5 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     sort(result.begin(), result.end());
     return SUCCESS;
 }
+
 
