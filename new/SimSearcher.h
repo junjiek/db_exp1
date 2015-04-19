@@ -25,7 +25,7 @@ private:
 	unsigned calED(const char *a, int thershold, int asize,int qLen, const char* Query);
 	void createED(int lineNum, const char* str);
 	void createJac(int lineNum, const char* str);
-	void defsort(int h, int t, int num);
+	void mysort(int b, int e, int len);
 	void mergeskip(int T, int thershold,int qLen);
 	void getListsED(int qLen, const char* Query);
 	void getListsJac(int qLen, const char* Query);

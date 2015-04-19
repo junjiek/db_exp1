@@ -28,9 +28,9 @@ SimSearcher::SimSearcher() {
 
 SimSearcher::~SimSearcher() {}
 
-void SimSearcher::defsort(int from, int to, int length) {
-    int i = from, j = to;
-    unsigned k = rawResult[(from + to) >> 1]->size();
+void SimSearcher::mysort(int b, int e, int len) {
+    int i = b, j = e;
+    unsigned k = rawResult[(b + e) >> 1]->size();
     do {
         while (rawResult[i]->size()>k) ++i;
         while (rawResult[j]->size()<k) --j;
@@ -44,8 +44,8 @@ void SimSearcher::defsort(int from, int to, int length) {
             --j;
         }
     } while (i <= j);
-    if (j > length) defsort(from, j, length);
-    if (length >= i) defsort(i, to, length);
+    if (j > len) mysort(b, j, len);
+    if (len >= i) mysort(i, e, len);
 }
 
 void SimSearcher::mergeskip(int T, int thershold, int qLen) {
@@ -64,7 +64,7 @@ void SimSearcher::mergeskip(int T, int thershold, int qLen) {
     int occur = T1;
     int len = rawResult.size();
     leave = T - occur;
-    if (leave < len && leave > 0) defsort(0, len-1, leave - 1);
+    if (leave < len && leave > 0) mysort(0, len-1, leave - 1);
     int i = leave;
     while(i < len) {
         vector<int> &curr = *(rawResult[i]);
