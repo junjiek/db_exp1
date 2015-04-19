@@ -23,7 +23,7 @@ private:
     vector<int> smallStr;
     vector<const char*> dataStr;
     vector<int> lineLen;
-    vector<int> visitor;
+    vector<int> visitLine;
     vector<int> rawResult;
     vector<int> queryIdx;
     unordered_map<int, vector<int>> hashED;
@@ -31,7 +31,7 @@ private:
     int q;
     int letterNum;
     int wordNum;
-    int times;
+    int visitor;
     int minSubStrSize;
     unsigned maxListSize;
     int querySize;

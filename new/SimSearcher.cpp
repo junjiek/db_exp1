@@ -10,7 +10,7 @@
 
 using namespace std;
 
-int visit[MAXN];
+int visitWord[MAXN];
 int wordExis[MAXN][BUFSIZE];
 int globalWordIdx[MAXN];
 int n_Hashq[BUFSIZE];
@@ -20,6 +20,7 @@ SimSearcher::SimSearcher() {
     maxListSize = 0;
     letterNum = 0;
     wordNum = 0;
+    visitor = 0;
     memset(globalWordIdx, -1, sizeof(globalWordIdx));
     dataStr.clear();
     smallStr.clear();
@@ -28,61 +29,40 @@ SimSearcher::SimSearcher() {
 
 SimSearcher::~SimSearcher() {}
 
-double SimSearcher::calDistJac(int index, double thershold) {
-    vector<int> &wordIdx = wordIdxJac[index];
-    int dataSize = wordIdx.size();
-    if (dataSize * thershold > querySize || querySize * thershold > dataSize)
-        return 0;
-    int intersec = 0;
-    int i = 0, j = 0;
-    while (i < dataSize) {
-        while (wordIdx[i] > queryIdx[j]) {
-            ++j;
-        }
-        if (wordIdx[i++] == queryIdx[j]) {
-            ++intersec;
-            ++j;
-        }
-    }
-    return (double)intersec / (dataSize + querySize - intersec);
+inline int mypow(int x, int y) {
+    int result = 1;
+    for (int i = 0; i < y; i ++)
+        result *= x;
+    return result;
 }
 
-unsigned SimSearcher::calDistED(const char *s, const char *t, int threshold) {
-    static int distance[BUFSIZE][BUFSIZE];
-    int slen(strlen(s)), tlen(strlen(t));
-    if (abs(slen - tlen) > threshold)
-        return INT_MAX;
-
-    for (int i = 0; i <= slen; ++i)
-        distance[i][0] = i;
-    for (int i = 0; i <= tlen; ++i)
-        distance[0][i] = i;
-
-    int minDist = threshold + 1;
-    for (int i = 1; i <= slen; ++i) {
-        int l = max(1, i - threshold);
-        int r = min(tlen, i + threshold);
-        minDist = threshold + 1;
-        for (int j = l; j <= r; ++j) {
-            if (s[i - 1] == t[j - 1])
-                distance[i][j] = distance[i - 1][j - 1];
-            else
-                distance[i][j] = distance[i - 1][j - 1] + 1;
-            
-            if (abs(i - 1 - j) <= threshold && distance[i][j] > distance[i - 1][j] + 1)
-                distance[i][j] = distance[i - 1][j] + 1;
-            if (abs(j - 1 - i) <= threshold && distance[i][j] > distance[i][j - 1] + 1)
-                distance[i][j] = distance[i][j - 1] + 1;
-            
-        if (distance[i][j] < minDist)
-            minDist = distance[i][j];
-        }
-        if (minDist > threshold)
-            return INT_MAX;
+void SimSearcher::prepareHash() {
+    int Hashq = mypow(HASH, q);
+    for (int n = 0; n < BUFSIZE; n++) {
+        n_Hashq[n] = n * Hashq;
     }
-    return distance[slen][tlen]; 
 }
 
+int SimSearcher::createIndex(const char *filename, unsigned q) {
+    this->q = q;
+    prepareHash();
+    ifstream fin(filename);
+    string line;
+    char * buf;
+    while (getline(fin, line)) {
+        lineLen.push_back((int)line.length());
+        int lineNum = dataStr.size();
+        buf = (char*)malloc(1000);
+        strcpy(buf, line.c_str()); 
+        dataStr.push_back(buf);
+        createED(buf, lineNum);
+        createJac(buf, lineNum);
+    };
+    fin.close();
+    visitLine.resize(dataStr.size());
+    return SUCCESS;
+
+}
 
 void SimSearcher::createED(const char * str, int lineNum) {
     if (lineLen[lineNum] < q) {
@@ -143,39 +123,60 @@ void SimSearcher::createJac(const char * str, int lineNum) {
     wordIdxJac.push_back(wordIdx);
 }
 
-inline int mypow(int x, int y) {
-    int result = 1;
-    for (int i = 0; i < y; i ++)
-        result *= x;
-    return result;
-}
+unsigned SimSearcher::calDistED(const char *s, const char *t, int threshold) {
+    static int distance[BUFSIZE][BUFSIZE];
+    int slen(strlen(s)), tlen(strlen(t));
+    if (abs(slen - tlen) > threshold)
+        return INT_MAX;
 
-void SimSearcher::prepareHash() {
-    int Hashq = mypow(HASH, q);
-    for (int n = 0; n < BUFSIZE; n++) {
-        n_Hashq[n] = n * Hashq;
+    for (int i = 0; i <= slen; ++i)
+        distance[i][0] = i;
+    for (int i = 0; i <= tlen; ++i)
+        distance[0][i] = i;
+
+    int minDist = threshold + 1;
+    for (int i = 1; i <= slen; ++i) {
+        int l = max(1, i - threshold);
+        int r = min(tlen, i + threshold);
+        minDist = threshold + 1;
+        for (int j = l; j <= r; ++j) {
+            if (s[i - 1] == t[j - 1])
+                distance[i][j] = distance[i - 1][j - 1];
+            else
+                distance[i][j] = distance[i - 1][j - 1] + 1;
+            
+            if (abs(i - 1 - j) <= threshold && distance[i][j] > distance[i - 1][j] + 1)
+                distance[i][j] = distance[i - 1][j] + 1;
+            if (abs(j - 1 - i) <= threshold && distance[i][j] > distance[i][j - 1] + 1)
+                distance[i][j] = distance[i][j - 1] + 1;
+            
+        if (distance[i][j] < minDist)
+            minDist = distance[i][j];
+        }
+        if (minDist > threshold)
+            return INT_MAX;
     }
+    return distance[slen][tlen]; 
 }
 
-int SimSearcher::createIndex(const char *filename, unsigned q) {
-    this->q = q;
-    prepareHash();
-    ifstream fin(filename);
-    string line;
-    char * buf;
-    while (getline(fin, line)) {
-        lineLen.push_back((int)line.length());
-        int lineNum = dataStr.size();
-        buf = (char*)malloc(1000);
-        strcpy(buf, line.c_str()); 
-        dataStr.push_back(buf);
-        createED(buf, lineNum);
-        createJac(buf, lineNum);
-    };
-    fin.close();
-    visitor.resize(dataStr.size());
-    return SUCCESS;
 
+double SimSearcher::calDistJac(int index, double thershold) {
+    vector<int> &wordIdx = wordIdxJac[index];
+    int dataSize = wordIdx.size();
+    if (dataSize * thershold > querySize || querySize * thershold > dataSize)
+        return 0;
+    int intersec = 0;
+    int i = 0, j = 0;
+    while (i < dataSize) {
+        while (wordIdx[i] > queryIdx[j]) {
+            ++j;
+        }
+        if (wordIdx[i++] == queryIdx[j]) {
+            ++intersec;
+            ++j;
+        }
+    }
+    return (double)intersec / (dataSize + querySize - intersec);
 }
 
 void SimSearcher::getListsED(const char* query) {
@@ -208,7 +209,7 @@ void SimSearcher::getListsJac(const char* query) {
     queryIdx.clear();
     int curr = 0;
 
-    times++;
+    visitor++;
     bool find = false;
     for (int i = 0; i <= qLen; ++i) {
         if (i == qLen || query[i] == ' ') {
@@ -217,8 +218,8 @@ void SimSearcher::getListsJac(const char* query) {
                 possibleLists.push_back(&invertedListJac[idx]);
                 if (invertedListJac[idx].size() > maxListSize)
                     maxListSize = invertedListJac[idx].size();
-                if (visit[idx] != times) {
-                    visit[idx] = times;
+                if (visitWord[idx] != visitor) {
+                    visitWord[idx] = visitor;
                     queryIdx.push_back(idx);
                 }
             } else {
@@ -271,24 +272,19 @@ void SimSearcher::mergeskip(int T, int threshold) {
         }
         return;
     }
-    ++times;
-    // int L = min((double(T)) / (U * log((double)(maxListSize) + 1)),
-    //             double(T - 1));
-    int L = 1;
+    ++visitor;
+    int longListNum = T - 1;
     int posListSize = possibleLists.size();
-    int leave = T - L;
-    if (leave < posListSize && leave > 0)
-        mysort(0, posListSize - 1, leave - 1);
-    int i = leave;
-    while (i < posListSize) {
+    if (longListNum < posListSize && longListNum > 0)
+        mysort(0, posListSize - 1, longListNum - 1);
+    for (int i = longListNum; i < posListSize; i++) {
         for (int idx : *(possibleLists[i])) {
-            if (visitor[idx] != times) {
-                visitor[idx] = times;
+            if (visitLine[idx] != visitor) {
+                visitLine[idx] = visitor;
                 if (abs(lineLen[idx] - qLen) <= threshold)
                     rawResult.push_back(idx);
             }
         }
-        i++;
     }
 }
 
