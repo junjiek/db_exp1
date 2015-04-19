@@ -17,17 +17,6 @@ const double U = 0.0085;
 
 class SimSearcher{
 private:
-    vector<vector<int>*> possibleLists;
-    vector<vector<int> > wordIdxJac;
-    vector<vector<int> > invertedListJac;
-    vector<int> smallStr;
-    vector<const char*> dataStr;
-    vector<int> lineLen;
-    vector<int> visitLine;
-    vector<int> rawResult;
-    vector<int> queryIdx;
-    unordered_map<int, vector<int>> hashED;
-
     int q;
     int letterNum;
     int wordNum;
@@ -36,6 +25,16 @@ private:
     unsigned maxListSize;
     int querySize;
     int qLen;
+    vector<vector<int> > wordIdxJac;
+    vector<vector<int> > invertedListJac;
+    vector<int> visitLine;
+    vector<const char*> dataStr;
+    vector<int> lineLen;
+    vector<int> smallStr;
+    vector<vector<int>*> possibleLists;
+    vector<int> rawResult;
+    vector<int> queryIdxJac;
+    unordered_map<int, vector<int>> invertedListED;
 
     void prepareHash();
     void createED(const char* str, int lineNum);
@@ -45,7 +44,7 @@ private:
     void getListsED(const char* query);
     void getListsJac(const char* query);
     int jaccardT(double threshold);
-    void mysort(int b, int e, int len);
+    void sortListLen(int b, int e, int len);
     int edT(unsigned threshold);
     void mergeskip(int T, int thershold);
 

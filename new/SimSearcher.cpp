@@ -24,7 +24,7 @@ SimSearcher::SimSearcher() {
     memset(globalWordIdx, -1, sizeof(globalWordIdx));
     dataStr.clear();
     smallStr.clear();
-    hashED.clear();
+    invertedListED.clear();
 }
 
 SimSearcher::~SimSearcher() {}
@@ -73,10 +73,10 @@ void SimSearcher::createED(const char * str, int lineNum) {
     for (int i = 0; i < q; i++) {
         hashCode = hashCode * HASH + str[i];
     }
-    hashED[hashCode].push_back(lineNum);
+    invertedListED[hashCode].push_back(lineNum);
     for (int i = q; i < lineLen[lineNum]; i++) {
         hashCode = hashCode * HASH - n_Hashq[(int)(str[i-q])] + str[i];
-        vector<int> &list = hashED[hashCode];
+        vector<int> &list = invertedListED[hashCode];
         if (list.empty() || list.back() != lineNum) {
             list.push_back(lineNum);
         }
@@ -168,10 +168,10 @@ double SimSearcher::calDistJac(int index, double thershold) {
     int intersec = 0;
     int i = 0, j = 0;
     while (i < dataSize) {
-        while (wordIdx[i] > queryIdx[j]) {
+        while (wordIdx[i] > queryIdxJac[j]) {
             ++j;
         }
-        if (wordIdx[i++] == queryIdx[j]) {
+        if (wordIdx[i++] == queryIdxJac[j]) {
             ++intersec;
             ++j;
         }
@@ -187,16 +187,16 @@ void SimSearcher::getListsED(const char* query) {
     for (int i = 0; i < q; i++) {
         hashCode = hashCode * HASH + query[i];
     }
-    unordered_map<int, vector<int>>::iterator iter = hashED.find(hashCode);
-    if (iter != hashED.end()) {
+    unordered_map<int, vector<int>>::iterator iter = invertedListED.find(hashCode);
+    if (iter != invertedListED.end()) {
         possibleLists.push_back(&(iter->second));
         if ((iter->second).size() > maxListSize)
             maxListSize = (iter->second).size();
     }
     for (int i = q; i < qLen; i++) {
         hashCode = hashCode * HASH - n_Hashq[(int)(query[i-q])] + query[i];
-        iter = hashED.find(hashCode);
-        if (iter != hashED.end()) {
+        iter = invertedListED.find(hashCode);
+        if (iter != invertedListED.end()) {
             possibleLists.push_back(&(iter->second));
             if ((iter->second).size() > maxListSize)
                 maxListSize = (iter->second).size();
@@ -205,8 +205,9 @@ void SimSearcher::getListsED(const char* query) {
 }
 void SimSearcher::getListsJac(const char* query) {
     possibleLists.clear();
+    queryIdxJac.clear
+    ();
     int newWord = 0;
-    queryIdx.clear();
     int curr = 0;
 
     visitor++;
@@ -220,7 +221,7 @@ void SimSearcher::getListsJac(const char* query) {
                     maxListSize = invertedListJac[idx].size();
                 if (visitWord[idx] != visitor) {
                     visitWord[idx] = visitor;
-                    queryIdx.push_back(idx);
+                    queryIdxJac.push_back(idx);
                 }
             } else {
                 newWord++;
@@ -238,12 +239,12 @@ void SimSearcher::getListsJac(const char* query) {
             curr = next;
         }
     }
-    sort(queryIdx.begin(), queryIdx.end());
-    querySize = queryIdx.size() + newWord;
-    queryIdx.push_back(INT_MAX);
+    sort(queryIdxJac.begin(), queryIdxJac.end());
+    querySize = queryIdxJac.size() + newWord;
+    queryIdxJac.push_back(INT_MAX);
 }
 
-void SimSearcher::mysort(int b, int e, int len) {
+void SimSearcher::sortListLen(int b, int e, int len) {
     int i = b, j = e;
     unsigned pivot = possibleLists[(b + e)/2]->size();
     do {
@@ -258,10 +259,10 @@ void SimSearcher::mysort(int b, int e, int len) {
             j--;
         }
     } while (i <= j);
-    if (j > len)
-        mysort(b, j, len);
     if (i <= len)
-        mysort(i, e, len);
+        sortListLen(i, e, len);
+    if (j > len)
+        sortListLen(b, j, len);
 }
 
 void SimSearcher::mergeskip(int T, int threshold) {
@@ -276,7 +277,7 @@ void SimSearcher::mergeskip(int T, int threshold) {
     int longListNum = T - 1;
     int posListSize = possibleLists.size();
     if (longListNum < posListSize && longListNum > 0)
-        mysort(0, posListSize - 1, longListNum - 1);
+        sortListLen(0, posListSize - 1, longListNum - 1);
     for (int i = longListNum; i < posListSize; i++) {
         for (int idx : *(possibleLists[i])) {
             if (visitLine[idx] != visitor) {
