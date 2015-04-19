@@ -83,24 +83,24 @@ void SimSearcher::mergeskip(int T, int thershold) {
         i++;
     }
 }
+
 double SimSearcher::calDistJac(int index, double thershold) {
     vector<int> &wordIdx = wordIdxJac[index];
-    int length = wordIdx.size(), bsize = querySize;
-    if (length * thershold > bsize || bsize * thershold > length)
+    int dataSize = wordIdx.size();
+    if (dataSize * thershold > querySize || querySize * thershold > dataSize)
         return 0;
-    int intersec = 0, q = otherWord + length;
+    int intersec = 0;
     int i = 0, j = 0;
-    while (i < length) {
+    while (i < dataSize) {
         while (wordIdx[i] > queryCnt[j]) {
             ++j;
-            ++q;
         }
         if (wordIdx[i++] == queryCnt[j]) {
             ++intersec;
             ++j;
         }
     }
-    return (double)intersec / (q + bsize - j);
+    return (double)intersec / (dataSize + querySize + otherWord - intersec);
 }
 
 unsigned SimSearcher::calDistED(const char *s, const char *t, int threshold) {
@@ -278,8 +278,7 @@ void SimSearcher::getListsJac(const char* query) {
         } else {
             if (find)
                 continue;
-            int to = query[i];
-            int &next = wordExis[curr][to];
+            int &next = wordExis[curr][(int)query[i]];
             if (next == 0) {
                 find = true;
                 continue;
