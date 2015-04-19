@@ -329,11 +329,9 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     }
     for (int j = 0; j < (int)smallStr.size(); j++) {
         int idx = smallStr[j];
-        //if (abs(len[idx]-squerysize)<=threshold) {
-            unsigned ed = calDistED(dataStr[idx], query, threshold);
-            if (ed <= threshold)
-                result.push_back(make_pair(idx, ed));
-        }
+        unsigned ed = calDistED(dataStr[idx], query, threshold);
+        if (ed <= threshold)
+            result.push_back(make_pair(idx, ed));
     }
     sort(result.begin(), result.end());
     return SUCCESS;
