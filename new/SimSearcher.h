@@ -31,7 +31,7 @@ private:
 	void getListsJac(int qLen, const char* Query);
 	void print_vec_vec_int(vector<vector<int> >);
 
-	vector<vector<int>*> data;
+	vector<vector<int>*> rawResult;
 	vector<vector<int> > wordIdxJac;
 	vector<vector<int> > invertedListJac;
 
@@ -42,7 +42,7 @@ private:
 	vector<int> new_index;
 	vector<int> queryCnt;
 
-	int itemNum;
+	int letterNum;
 	int wordNum;
 	int otherWord;
 	int times;

@@ -13,14 +13,14 @@
 using namespace std;
 
 int wordExis[MAXN][BUFSIZE];
-int wordCount[MAXN];
+int globalWordIdx[MAXN];
 int visit[MAXN];
 
 SimSearcher::SimSearcher() {
     minSubStrSize = INT_MAX;
     wordNum = 0;
-    memset(wordCount, -1, sizeof(wordCount));
-    itemNum = 1;
+    memset(globalWordIdx, -1, sizeof(globalWordIdx));
+    letterNum = 0;
     dataStr.clear();
     hashED.clear();
     smallStr.clear();
@@ -30,15 +30,15 @@ SimSearcher::~SimSearcher() {}
 
 void SimSearcher::defsort(int from, int to, int length) {
     int i = from, j = to;
-    unsigned k = data[(from + to) >> 1]->size();
+    unsigned k = rawResult[(from + to) >> 1]->size();
     do {
-        while (data[i]->size()>k) ++i;
-        while (data[j]->size()<k) --j;
+        while (rawResult[i]->size()>k) ++i;
+        while (rawResult[j]->size()<k) --j;
         if (i <= j) {
-            if (data[i]->size() != data[j]->size()) {
-                vector<int> *tmp = data[i];
-                data[i] = data[j];
-                data[j] = tmp;
+            if (rawResult[i]->size() != rawResult[j]->size()) {
+                vector<int> *tmp = rawResult[i];
+                rawResult[i] = rawResult[j];
+                rawResult[j] = tmp;
             }
             ++i;
             --j;
@@ -62,14 +62,14 @@ void SimSearcher::mergeskip(int T, int thershold, int qLen) {
     }
     ++times;
     int occur = T1;
-    int len = data.size();
+    int len = rawResult.size();
     leave = T - occur;
     if (leave < len && leave > 0) defsort(0, len-1, leave - 1);
     int i = leave;
     while(i < len) {
-        vector<int> &current = *(data[i]);
-        for (int j = current.size() - 1; j >= 0; --j) {
-            int temp = current[j];
+        vector<int> &curr = *(rawResult[i]);
+        for (int j = curr.size() - 1; j >= 0; --j) {
+            int temp = curr[j];
             if (visitor[temp] != times) {
                 visitor[temp] = times;
                 if (abs(lineLen[temp] - qLen) <= thershold) new_index.push_back(temp);
@@ -136,48 +136,42 @@ void SimSearcher::createED(int lineNum, const char * str) {
 }
 
 void SimSearcher::createJac(int lineNum, const char * str) {
-    vector<int> iList;
-    vector<int> empty;
-    iList.clear();
-    empty.clear();
-    int current = 1,i = 0;
+    vector<int> wordIdx;
+    wordIdx.clear();
+    int curr = 0;
     int subStrSize = 0;
-    while(i < lineLen[lineNum]) {
-        if (str[i] == ' ') {
-            int &tmpI = wordCount[current];
-            if (tmpI == -1) {
-                tmpI = wordNum++;
-                invertedListJac.push_back(empty);
+
+    for (int i = 0 ; i <= lineLen[lineNum]; i++) {
+        if (i == lineLen[lineNum] || str[i] == ' ') {
+            // The word has never appeared in dataset before
+            if (globalWordIdx[curr] == -1) {
+                globalWordIdx[curr] = wordNum;
+                wordNum ++;
+                vector<int> newWordList;
+                invertedListJac.push_back(newWordList);
             }
-            vector<int> &arr = invertedListJac[tmpI];
-            if (arr.empty() || arr.back() != lineNum) {
-                arr.push_back(lineNum);
-                iList.push_back(tmpI);
-                ++subStrSize;
+            // The word appear first time in str
+            int idx = globalWordIdx[curr];
+            if (invertedListJac[idx].empty() || invertedListJac[idx].back() != lineNum) {
+                invertedListJac[idx].push_back(lineNum);
+                wordIdx.push_back(idx);
+                subStrSize ++;
             }
-            current = 1;
+            curr = 0;
+
         } else {
-            int to = str[i];
-            int &next = wordExis[current][to];
-            if (next == 0) next = ++itemNum;
-            current = next;
+            int &next = wordExis[curr][(int)str[i]];
+            if (next == 0) {
+                next = ++letterNum;
+            }
+            curr = next;
         }
-        ++i;
     }
-    int &tmpI = wordCount[current];
-    if (tmpI == -1) {
-        tmpI = wordNum++;
-        invertedListJac.push_back(empty);
+    if (minSubStrSize > subStrSize) {
+        minSubStrSize = subStrSize;
     }
-    vector<int> &arr = invertedListJac[tmpI];
-    if (arr.empty() || arr.back() != lineNum) {
-        arr.push_back(lineNum);
-        iList.push_back(tmpI);
-        ++subStrSize;
-    }
-    if (minSubStrSize > subStrSize) minSubStrSize = subStrSize;
-    sort(iList.begin(), iList.end());
-    wordIdxJac.push_back(iList);
+    sort(wordIdx.begin(), wordIdx.end());
+    wordIdxJac.push_back(wordIdx);
 }
 
 inline int mypow(int x, int y) {
@@ -216,7 +210,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 }
 
 void SimSearcher::getListsED(int qLen, const char* query) {
-    data.clear();
+    rawResult.clear();
     querySize = qLen + 1 - q;
     if (qLen < q) return;
     int hashCode = 0;
@@ -225,56 +219,56 @@ void SimSearcher::getListsED(int qLen, const char* query) {
     }
     unordered_map<int, vector<int>>::iterator iter = hashED.find(hashCode);
     if (iter != hashED.end()) {
-        data.push_back(&(iter->second));
+        rawResult.push_back(&(iter->second));
     }
     for (int i = q; i < qLen; i++) {
         hashCode = hashCode * HASH - n_Hashq[(int)(query[i-q])] + query[i];
         iter = hashED.find(hashCode);
         if (iter != hashED.end()) {
-            data.push_back(&(iter->second));
+            rawResult.push_back(&(iter->second));
         }
     }
 }
 void SimSearcher::getListsJac(int qLen, const char* query) {
-    data.clear();
+    rawResult.clear();
     querySize = 0;
     otherWord = 0;
     queryCnt.clear();
-    int current = 1;
+    int curr = 0;
     ++times;
     bool find = false;
     //cout << squery << endl;
     for (int i = 0; i < qLen; ++i) {
         if (query[i] == ' ') {
-            int num = wordCount[current];
+            int num = globalWordIdx[curr];
             if (!find && num != -1) {
-                data.push_back(&invertedListJac[num]);
+                rawResult.push_back(&invertedListJac[num]);
                 if (visit[num] != times) {
                     visit[num] = times;
                     queryCnt.push_back(num);
                 }
-                //cout << "push" << tmpI << endl;
+                //cout << "push" << idx << endl;
             }
             else
                 ++otherWord;
-            current = 1;
+            curr = 0;
             find = false;
         } else {
             if (find)
                 continue;
             int to = query[i];
-            int &next = wordExis[current][to];
+            int &next = wordExis[curr][to];
             if (next == 0) {
                 find = true;
                 continue;
             }
-            current = next;
+            curr = next;
         }
     }
     {
-        int num = wordCount[current];
+        int num = globalWordIdx[curr];
         if (!find && num != -1) {
-            data.push_back(&invertedListJac[num]);
+            rawResult.push_back(&invertedListJac[num]);
             if (visit[num] != times) {
                 visit[num] = times;
                 queryCnt.push_back(num);
@@ -316,14 +310,14 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     mergeskip(querySize-threshold*q, threshold,qLen);//MERGE
     int size = smallStr.size();
     for (int i = new_index.size()-1; i >= 0; --i) {
-        int tmpI = new_index[i];
-        unsigned tmpU = calED(dataStr[tmpI], threshold, lineLen[tmpI],qLen,query);
+        int idx = new_index[i];
+        unsigned tmpU = calED(dataStr[idx], threshold, lineLen[idx],qLen,query);
         if (tmpU <= threshold)
-            result.push_back(make_pair(tmpI, tmpU));
+            result.push_back(make_pair(idx, tmpU));
     }
     for (int j = 0; j < size; ++j) {
         int tmp1 = smallStr[j];
-        //if (abs(len[tmpI]-squerysize)<=threshold)
+        //if (abs(len[idx]-squerysize)<=threshold)
         {
             unsigned tmp2 = calED(dataStr[tmp1], threshold, lineLen[tmp1],qLen,query);
             if (tmp2 <= threshold)
