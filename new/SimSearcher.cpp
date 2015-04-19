@@ -30,15 +30,15 @@ SimSearcher::~SimSearcher() {}
 
 void SimSearcher::mysort(int b, int e, int len) {
     int i = b, j = e;
-    unsigned pivot = rawResult[(b + e)/2]->size();
+    unsigned pivot = possibleLists[(b + e)/2]->size();
     do {
-        while (rawResult[i]->size() > pivot)
+        while (possibleLists[i]->size() > pivot)
             i++;
-        while (rawResult[j]->size() < pivot)
+        while (possibleLists[j]->size() < pivot)
             j--;
         if (i <= j) {
-            if (rawResult[i]->size() != rawResult[j]->size())
-                swap(rawResult[i], rawResult[j]);
+            if (possibleLists[i]->size() != possibleLists[j]->size())
+                swap(possibleLists[i], possibleLists[j]);
             i++;
             j--;
         }
@@ -50,34 +50,34 @@ void SimSearcher::mysort(int b, int e, int len) {
 }
 
 void SimSearcher::mergeskip(int T, int thershold) {
-    if (T < 1) {
+    if (T  == 0) {
         int j = dataStr.size() - 1;
         for (int i = smallStr.size()-1; i >= 0; --i) {
             for (int k = j; k > smallStr[i]; --k)
-                if (abs(lineLen[k]-qLen) <= thershold)
-                    newIdx.push_back(k);
+                if (abs(lineLen[k] - qLen) <= thershold)
+                    rawResult.push_back(k);
             j = smallStr[i] - 1;
         }
         for (int k = j; k >= 0; --k)
             if (abs(lineLen[k]-qLen) <= thershold)
-                newIdx.push_back(k);
+                rawResult.push_back(k);
         return;
     }
     ++times;
     int occur = T1;
-    int len = rawResult.size();
+    int len = possibleLists.size();
     leave = T - occur;
     if (leave < len && leave > 0)
         mysort(0, len-1, leave - 1);
     int i = leave;
     while(i < len) {
-        vector<int> &curr = *(rawResult[i]);
+        vector<int> &curr = *(possibleLists[i]);
         for (int j = curr.size() - 1; j >= 0; --j) {
             int temp = curr[j];
             if (visitor[temp] != times) {
                 visitor[temp] = times;
                 if (abs(lineLen[temp] - qLen) <= thershold)
-                    newIdx.push_back(temp);
+                    rawResult.push_back(temp);
             }
         }
         i++;
@@ -92,15 +92,15 @@ double SimSearcher::calDistJac(int index, double thershold) {
     int intersec = 0;
     int i = 0, j = 0;
     while (i < dataSize) {
-        while (wordIdx[i] > queryCnt[j]) {
+        while (wordIdx[i] > queryIdx[j]) {
             ++j;
         }
-        if (wordIdx[i++] == queryCnt[j]) {
+        if (wordIdx[i++] == queryIdx[j]) {
             ++intersec;
             ++j;
         }
     }
-    return (double)intersec / (dataSize + querySize + otherWord - intersec);
+    return (double)intersec / (dataSize + querySize - intersec);
 }
 
 unsigned SimSearcher::calDistED(const char *s, const char *t, int threshold) {
@@ -234,7 +234,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 }
 
 void SimSearcher::getListsED(const char* query) {
-    rawResult.clear();
+    possibleLists.clear();
     querySize = qLen + 1 - q;
     if (qLen < q) return;
     int hashCode = 0;
@@ -243,42 +243,41 @@ void SimSearcher::getListsED(const char* query) {
     }
     unordered_map<int, vector<int>>::iterator iter = hashED.find(hashCode);
     if (iter != hashED.end()) {
-        rawResult.push_back(&(iter->second));
+        possibleLists.push_back(&(iter->second));
     }
     for (int i = q; i < qLen; i++) {
         hashCode = hashCode * HASH - n_Hashq[(int)(query[i-q])] + query[i];
         iter = hashED.find(hashCode);
         if (iter != hashED.end()) {
-            rawResult.push_back(&(iter->second));
+            possibleLists.push_back(&(iter->second));
         }
     }
 }
 void SimSearcher::getListsJac(const char* query) {
-    rawResult.clear();
-    otherWord = 0;
-    queryCnt.clear();
+    possibleLists.clear();
+    int newWord = 0;
+    queryIdx.clear();
     int curr = 0;
-    ++times;
+    times++;
     bool find = false;
     for (int i = 0; i <= qLen; ++i) {
         if (i == qLen || query[i] == ' ') {
-            int num = globalWordIdx[curr];
-            if (!find && num != -1) {
-                rawResult.push_back(&invertedListJac[num]);
-                if (visit[num] != times) {
-                    visit[num] = times;
-                    queryCnt.push_back(num);
+            int idx = globalWordIdx[curr];
+            if (!find && idx != -1) {
+                possibleLists.push_back(&invertedListJac[idx]);
+                if (visit[idx] != times) {
+                    visit[idx] = times;
+                    queryIdx.push_back(idx);
                 }
-                //cout << "push" << idx << endl;
+            } else {
+                newWord++;
             }
-            else
-                ++otherWord;
             curr = 0;
             find = false;
         } else {
             if (find)
                 continue;
-            int &next = wordExis[curr][(int)query[i]];
+            int next = wordExis[curr][(int)query[i]];
             if (next == 0) {
                 find = true;
                 continue;
@@ -286,9 +285,9 @@ void SimSearcher::getListsJac(const char* query) {
             curr = next;
         }
     }
-    sort(queryCnt.begin(), queryCnt.end());
-    querySize = queryCnt.size();
-    queryCnt.push_back(INT_MAX);
+    sort(queryIdx.begin(), queryIdx.end());
+    querySize = queryIdx.size() + newWord;
+    queryIdx.push_back(INT_MAX);
 }
 
 int SimSearcher::jaccardT(double threshold) {
@@ -299,33 +298,37 @@ int SimSearcher::jaccardT(double threshold) {
 
 int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<unsigned, double> > &result) {
     result.clear();
-    newIdx.clear();
+    rawResult.clear();
     qLen = strlen(query);
     getListsJac(query);
     mergeskip(jaccardT(threshold), INT_MAX);
-    for (int i = newIdx.size()-1; i >= 0; --i) {
-        double tmpD = calDistJac(newIdx[i], threshold);
+    for (int i = rawResult.size() - 1; i >= 0; i--) {
+        double tmpD = calDistJac(rawResult[i], threshold);
         if (tmpD > threshold - EPS)
-            result.push_back(make_pair(newIdx[i], tmpD));
+            result.push_back(make_pair(rawResult[i], tmpD));
     }
     sort(result.begin(), result.end());
     return SUCCESS;
 }
 
+int SimSearcher::edT(unsigned threshold) {
+    return max(0, querySize - (int)(threshold * q));
+}
+
 int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<unsigned, unsigned> > &result) {
     result.clear();
-    newIdx.clear();
+    rawResult.clear();
     qLen = strlen(query);
     getListsED(query);
-    mergeskip(querySize-threshold*q, threshold);
+    mergeskip(edT(threshold), threshold);
     int size = smallStr.size();
-    for (int i = newIdx.size()-1; i >= 0; --i) {
-        int idx = newIdx[i];
+    for (int i = rawResult.size() - 1; i >= 0; i--) {
+        int idx = rawResult[i];
         unsigned tmpU = calDistED(dataStr[idx], query, threshold);
         if (tmpU <= threshold)
             result.push_back(make_pair(idx, tmpU));
     }
-    for (int j = 0; j < size; ++j) {
+    for (int j = 0; j < size; j++) {
         int tmp1 = smallStr[j];
         //if (abs(len[idx]-squerysize)<=threshold)
         {

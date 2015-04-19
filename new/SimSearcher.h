@@ -28,12 +28,13 @@ private:
     void createJac(const char* str, int lineNum);
     void mysort(int b, int e, int len);
     int jaccardT(double threshold);
+    int edT(unsigned threshold);
     void mergeskip(int T, int thershold);
     void getListsED(const char* query);
     void getListsJac(const char* query);
     void print_vec_vec_int(vector<vector<int> >);
 
-    vector<vector<int>*> rawResult;
+    vector<vector<int>*> possibleLists;
     vector<vector<int> > wordIdxJac;
     vector<vector<int> > invertedListJac;
 
@@ -41,12 +42,11 @@ private:
     vector<const char*> dataStr;
     vector<int> lineLen;
     vector<int> visitor;
-    vector<int> newIdx;
-    vector<int> queryCnt;
+    vector<int> rawResult;
+    vector<int> queryIdx;
 
     int letterNum;
     int wordNum;
-    int otherWord;
     int times;
     int minSubStrSize;
     int q;
