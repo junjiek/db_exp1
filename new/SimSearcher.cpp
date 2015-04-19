@@ -38,6 +38,7 @@ inline int mypow(int x, int y) {
 
 void SimSearcher::prepareHash() {
     int Hashq = mypow(HASH, q);
+    // n_Hashq[n] = n*(HASH^q)
     for (int n = 0; n < BUFSIZE; n++) {
         n_Hashq[n] = n * Hashq;
     }
@@ -55,8 +56,8 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
         buf = (char*)malloc(1000);
         strcpy(buf, line.c_str()); 
         dataStr.push_back(buf);
-        createED(buf, lineNum);
-        createJac(buf, lineNum);
+        buildED(buf, lineNum);
+        buildJac(buf, lineNum);
     };
     fin.close();
     visitLine.resize(dataStr.size());
@@ -64,7 +65,7 @@ int SimSearcher::createIndex(const char *filename, unsigned q) {
 
 }
 
-void SimSearcher::createED(const char * str, int lineNum) {
+void SimSearcher::buildED(const char * str, int lineNum) {
     if (lineLen[lineNum] < q) {
         smallStr.push_back(lineNum);
         return;
@@ -77,13 +78,14 @@ void SimSearcher::createED(const char * str, int lineNum) {
     for (int i = q; i < lineLen[lineNum]; i++) {
         hashCode = hashCode * HASH - n_Hashq[(int)(str[i-q])] + str[i];
         vector<int> &list = invertedListED[hashCode];
+        // gram first appear in str
         if (list.empty() || list.back() != lineNum) {
             list.push_back(lineNum);
         }
     }
 }
 
-void SimSearcher::createJac(const char * str, int lineNum) {
+void SimSearcher::buildJac(const char * str, int lineNum) {
     vector<int> wordIdx;
     wordIdx.clear();
     int curr = 0;
@@ -163,10 +165,12 @@ unsigned SimSearcher::calDistED(const char *s, const char *t, int threshold) {
 double SimSearcher::calDistJac(int index, double thershold) {
     vector<int> &wordIdx = wordIdxJac[index];
     int dataSize = wordIdx.size();
-    if (dataSize * thershold > querySize || querySize * thershold > dataSize)
+    if (dataSize * thershold > querySize
+        || querySize * thershold > dataSize)
         return 0;
     int intersec = 0;
     int i = 0, j = 0;
+    // cal intersec num in two sorted vector
     while (i < dataSize) {
         while (wordIdx[i] > queryIdxJac[j]) {
             ++j;
@@ -187,7 +191,8 @@ void SimSearcher::getListsED(const char* query) {
     for (int i = 0; i < q; i++) {
         hashCode = hashCode * HASH + query[i];
     }
-    unordered_map<int, vector<int>>::iterator iter = invertedListED.find(hashCode);
+    unordered_map<int, vector<int>>::iterator iter;
+    iter = invertedListED.find(hashCode);
     if (iter != invertedListED.end()) {
         possibleLists.push_back(&(iter->second));
         if ((iter->second).size() > maxListSize)
@@ -205,8 +210,7 @@ void SimSearcher::getListsED(const char* query) {
 }
 void SimSearcher::getListsJac(const char* query) {
     possibleLists.clear();
-    queryIdxJac.clear
-    ();
+    queryIdxJac.clear();
     int newWord = 0;
     int curr = 0;
 
@@ -215,7 +219,8 @@ void SimSearcher::getListsJac(const char* query) {
     for (int i = 0; i <= qLen; ++i) {
         if (i == qLen || query[i] == ' ') {
             int idx = globalWordIdx[curr];
-            if (!find && idx != -1) {
+            // the word has appeared in dataset && has not appeared in query
+            if (idx != -1 && !find) {
                 possibleLists.push_back(&invertedListJac[idx]);
                 if (invertedListJac[idx].size() > maxListSize)
                     maxListSize = invertedListJac[idx].size();
@@ -265,7 +270,7 @@ void SimSearcher::sortListLen(int b, int e, int len) {
         sortListLen(b, j, len);
 }
 
-void SimSearcher::mergeskip(int T, int threshold) {
+void SimSearcher::divideSkip(int T, int threshold) {
     if (T  == 0) {
         for (int i = 0; i < (int)dataStr.size(); i++) {
             if(abs(lineLen[i] - qLen) <= threshold)
@@ -298,7 +303,7 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
     rawResult.clear();
     qLen = strlen(query);
     getListsED(query);
-    mergeskip(edT(threshold), threshold);
+    divideSkip(edT(threshold), threshold);
     for (int i = rawResult.size() - 1; i >= 0; i--) {
         int idx = rawResult[i];
         unsigned ed = calDistED(dataStr[idx], query, threshold);
@@ -326,7 +331,7 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
     rawResult.clear();
     qLen = strlen(query);
     getListsJac(query);
-    mergeskip(jaccardT(threshold), INT_MAX);
+    divideSkip(jaccardT(threshold), INT_MAX);
     for (int i = rawResult.size() - 1; i >= 0; i--) {
         double jac = calDistJac(rawResult[i], threshold);
         if (jac > threshold - EPS)

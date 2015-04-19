@@ -25,8 +25,9 @@ private:
     unsigned maxListSize;
     int querySize;
     int qLen;
-    vector<vector<int> > wordIdxJac;
+    unordered_map<int, vector<int>> invertedListED;
     vector<vector<int> > invertedListJac;
+    vector<vector<int> > wordIdxJac;
     vector<int> visitLine;
     vector<const char*> dataStr;
     vector<int> lineLen;
@@ -34,11 +35,10 @@ private:
     vector<vector<int>*> possibleLists;
     vector<int> rawResult;
     vector<int> queryIdxJac;
-    unordered_map<int, vector<int>> invertedListED;
 
     void prepareHash();
-    void createED(const char* str, int lineNum);
-    void createJac(const char* str, int lineNum);
+    void buildED(const char* str, int lineNum);
+    void buildJac(const char* str, int lineNum);
     double calDistJac(int ind, double threshold);
     unsigned calDistED(const char *s, const char* t, int threshold);
     void getListsED(const char* query);
@@ -46,7 +46,7 @@ private:
     int jaccardT(double threshold);
     void sortListLen(int b, int e, int len);
     int edT(unsigned threshold);
-    void mergeskip(int T, int thershold);
+    void divideSkip(int T, int thershold);
 
 public:
     SimSearcher();

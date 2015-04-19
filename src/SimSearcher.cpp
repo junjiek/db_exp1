@@ -193,7 +193,7 @@ void SimSearcher::divideSkip(int T) {
     //get the L longest lists
     int L = min((double(T)) / (U * log((double)(*(sortedList.back())).size()) + 1),
                 double(T - 1));
-    L = T - 1;
+    // L = T - 1;
     int shortNum = sortedList.size() - int(L);
     // start = clock();
     mergeSkip(T-L, shortNum);
