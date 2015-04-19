@@ -260,8 +260,8 @@ void SimSearcher::getListsJac(const char* query) {
     int curr = 0;
     ++times;
     bool find = false;
-    for (int i = 0; i < qLen; ++i) {
-        if (query[i] == ' ') {
+    for (int i = 0; i <= qLen; ++i) {
+        if (i == qLen || query[i] == ' ') {
             int num = globalWordIdx[curr];
             if (!find && num != -1) {
                 rawResult.push_back(&invertedListJac[num]);
@@ -286,18 +286,6 @@ void SimSearcher::getListsJac(const char* query) {
             }
             curr = next;
         }
-    }
-    {
-        int num = globalWordIdx[curr];
-        if (!find && num != -1) {
-            rawResult.push_back(&invertedListJac[num]);
-            if (visit[num] != times) {
-                visit[num] = times;
-                queryCnt.push_back(num);
-            }
-        }
-        else
-            ++otherWord;
     }
     sort(queryCnt.begin(), queryCnt.end());
     querySize = queryCnt.size();
